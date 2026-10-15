@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1, user-scalable=no" />
+  <meta name="theme-color" content="#150721" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="description" content="Filtro AR Team Elegantísimos · Master Class Paolo. Sonríe, captura y comparte tu foto." />
+  <title>Team Elegantísimos · Master Class Paolo AR</title>
+  <link rel="icon" href="./assets/favicon.svg" type="image/svg+xml" />
+  <link rel="stylesheet" href="./style.css" />
+</head>
+<body>
+  <main class="app" id="app">
+    <div class="camera-stage" id="stage">
+      <canvas id="cameraCanvas" aria-label="Vista de la cámara con el filtro de Team Elegantísimos"></canvas>
+      <video id="sourceVideo" autoplay muted playsinline webkit-playsinline aria-hidden="true"></video>
+      <div class="preview-fallback" id="fallback" aria-hidden="true"><div class="preview-orb"></div><div class="preview-silhouette"></div></div>
+      <div class="hud-top">
+        <div class="overline">MASTER CLASS <b>•</b> PAOLO</div>
+        <span id="trackingStatus" class="status-pill">Activa tu cámara</span>
+      </div>
+      <div class="hud-hint" id="hint">Sonríe y desbloquea tu corona ✨</div>
+      <div class="hud-actions" id="actions">
+        <button class="action-circle" id="galleryBtn" title="Mis fotos" aria-label="Abrir mi galería">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect width="17" height="17" x="3" y="3" rx="3"/><circle cx="8.3" cy="8.2" r="1.7"/><path d="m4 16 4.5-4 3.6 3.1 2.3-2 5.4 5"/></svg><small>Fotos</small>
+        </button>
+        <button class="shutter" id="captureBtn" title="Tomar foto" aria-label="Tomar fotografía" disabled><span></span></button>
+        <button class="action-circle" id="flipBtn" title="Cambiar cámara" aria-label="Cambiar cámara frontal y trasera" disabled>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8.5 7 5h10l3 3.5v10H4z"/><circle cx="12" cy="13" r="3.1"/><path d="M9 3.1 6.5 5.4M9 3.1l-.1 3.4M15 21l2.5-2.5M15 21v-3.4"/></svg><small>Girar</small>
+        </button>
+      </div>
+      <div class="flash" id="flash" aria-hidden="true"></div>
+    </div>
+
+    <section class="startup" id="startup" role="dialog" aria-labelledby="startupTitle">
+      <div class="startup-card">
+        <div class="eyebrow">EXPERIENCIA AR</div>
+        <img src="./assets/team-logo.png" alt="Team Elegantísimos" class="logo-start" />
+        <h1 id="startupTitle">¿Listo para brillar?</h1>
+        <p>Sonríe para desbloquear la corona <strong>Master Class Paolo</strong> y llévate tu foto personalizada.</p>
+        <button id="startBtn" class="primary-btn">Activar cámara <span>↗</span></button>
+        <p class="privacy-note">Tu imagen se procesa en el dispositivo. No subimos tus fotos a ningún servidor.</p>
+        <p class="progress-note" id="loadMessage" aria-live="polite"></p>
+      </div>
+    </section>
+
+    <section id="photoDialog" class="dialog hidden" role="dialog" aria-modal="true" aria-labelledby="photoTitle">
+      <div class="dialog-backdrop" data-close="photo"></div>
+      <div class="dialog-panel photo-panel">
+        <div class="dialog-head"><h2 id="photoTitle">¡Fotaza! ✨</h2><button class="close-btn" data-close="photo" aria-label="Cerrar">×</button></div>
+        <img id="photoPreview" class="photo-preview" alt="Foto tomada con el filtro de Team Elegantísimos" />
+        <div class="dialog-actions">
+          <button id="saveBtn" class="primary-btn">Guardar foto ↓</button>
+          <button id="shareBtn" class="outline-btn">Compartir ↗</button>
+        </div>
+        <p id="photoHelp" class="help-text">En iPhone también puedes mantener pulsada la foto y elegir «Guardar en Fotos».</p>
+      </div>
+    </section>
+
+    <section id="galleryDialog" class="dialog hidden" role="dialog" aria-modal="true" aria-labelledby="galleryTitle">
+      <div class="dialog-backdrop" data-close="gallery"></div>
+      <div class="dialog-panel gallery-panel">
+        <div class="dialog-head"><h2 id="galleryTitle">Mis fotos</h2><button class="close-btn" data-close="gallery" aria-label="Cerrar">×</button></div>
+        <p class="help-text">Guardadas solo en este navegador. Descarga las fotos que quieras conservar.</p>
+        <div id="galleryGrid" class="gallery-grid"><p class="empty-gallery">Todavía no tienes fotos. ¡Sonríe y toma la primera!</p></div>
+      </div>
+    </section>
+
+    <div class="toast" id="toast" role="status" aria-live="polite"></div>
+    <button class="safari-help" id="safariHelpBtn" title="Ayuda para Safari">¿Usas iPhone?</button>
+    <section id="safariDialog" class="dialog hidden" role="dialog" aria-modal="true" aria-labelledby="safariTitle">
+      <div class="dialog-backdrop" data-close="safari"></div>
+      <div class="dialog-panel safari-panel">
+        <div class="dialog-head"><h2 id="safariTitle">Abrir en Safari</h2><button class="close-btn" data-close="safari" aria-label="Cerrar">×</button></div>
+        <p>En iPhone, si el filtro se abrió dentro de Instagram, WhatsApp u otro navegador integrado, abre esta misma dirección en <strong>Safari</strong> para tener una experiencia más predecible.</p>
+        <div class="steps">1. Pulsa <b>Copiar enlace</b>.<br/>2. Abre Safari.<br/>3. Pega el enlace y acepta el permiso de cámara.</div>
+        <button id="copyLinkBtn" class="primary-btn">Copiar enlace</button>
+        <p class="help-text">Por seguridad, las páginas web no pueden obligar a iOS a abrir Safari automáticamente.</p>
+      </div>
+    </section>
+  </main>
+  <script type="module" src="./src/app.js"></script>
+</body>
+</html>
