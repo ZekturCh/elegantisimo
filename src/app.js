@@ -11,7 +11,11 @@ let faceLandmarker=null,stream=null,facingMode='user',lastVideoTime=-1,latestLan
 let latestGeometry=null, photoBlob=null,photoUrl=null,loading=false,raf=null,showCamera=false;
 let toastHandle=null,lastScan=0,lastFaceAt=0;
 const smileGate=makeSmileGate(.46,.29,170);
-const MEDIA_VERSION='0.10.22';
+const MEDIA_VERSION='0.10.35';
+const MEDIA_CDNS=[
+  `https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@${MEDIA_VERSION}`,
+  `https://unpkg.com/@mediapipe/tasks-vision@${MEDIA_VERSION}`
+];
 const MODEL='https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task';
 
 function showToast(message){
@@ -105,16 +109,33 @@ async function startCamera(){
 }
 async function loadModel(){
   if(faceLandmarker)return;
-  setLoading('Preparando seguimiento facial…');
-  const {FaceLandmarker,FilesetResolver}=await import(`https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@${MEDIA_VERSION}/+esm`);
-  const vision=await FilesetResolver.forVisionTasks(`https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@${MEDIA_VERSION}/wasm`);
-  const opts={
-    baseOptions:{modelAssetPath:MODEL,delegate:'GPU'},
-    runningMode:'VIDEO',numFaces:1,outputFaceBlendshapes:true,
-    minFaceDetectionConfidence:.5,minFacePresenceConfidence:.5,minTrackingConfidence:.5
-  };
-  try{faceLandmarker=await FaceLandmarker.createFromOptions(vision,opts);}
-  catch(gpuError){console.warn('GPU no disponible. Reintentando CPU:',gpuError);opts.baseOptions.delegate='CPU';faceLandmarker=await FaceLandmarker.createFromOptions(vision,opts);}
+  let lastError=null;
+  for(const base of MEDIA_CDNS){
+    try{
+      setLoading('Preparando seguimiento facial…');
+      // Importar el bundle ESM real: /+esm fallaba en la versión antigua inexistente.
+      const {FaceLandmarker,FilesetResolver}=await import(`${base}/vision_bundle.mjs`);
+      const vision=await FilesetResolver.forVisionTasks(`${base}/wasm`);
+      const opts={
+        baseOptions:{modelAssetPath:MODEL,delegate:'GPU'},
+        runningMode:'VIDEO',numFaces:1,outputFaceBlendshapes:true,
+        minFaceDetectionConfidence:.5,minFacePresenceConfidence:.5,minTrackingConfidence:.5
+      };
+      try{
+        faceLandmarker=await FaceLandmarker.createFromOptions(vision,opts);
+      }catch(gpuError){
+        console.warn('GPU no disponible. Reintentando CPU:',gpuError);
+        opts.baseOptions.delegate='CPU';
+        faceLandmarker=await FaceLandmarker.createFromOptions(vision,opts);
+      }
+      return;
+    }catch(error){
+      lastError=error;
+      console.warn('Error cargando MediaPipe desde '+base,error);
+    }
+  }
+  console.error('No se pudo cargar MediaPipe desde ninguno de los CDN.',lastError);
+  throw new Error('No se pudo cargar el seguimiento facial. Verifica tu conexión y vuelve a intentar.');
 }
 async function activate(){
   if(loading)return;loading=true;startBtn.disabled=true;
