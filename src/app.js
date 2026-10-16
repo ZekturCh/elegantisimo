@@ -1,17 +1,17 @@
-import {clamp, getCoverGeometry, drawFrame, drawCrown} from './renderer.js';
+import {clamp, getCoverGeometry, drawFrame, drawPhotoBrand, drawFaceEffect, EFFECTS, nextEffectIndex} from './renderer.js';
 import {createFaceTracker} from './faces.js';
 import {listPhotos, savePhoto} from './gallery.js';
 
 const $=id=>document.getElementById(id);
 const video=$('sourceVideo'), canvas=$('cameraCanvas'), ctx=canvas.getContext('2d',{alpha:false});
 const stage=$('stage'), startup=$('startup'), startBtn=$('startBtn'), status=$('trackingStatus'), hint=$('hint');
-const captureBtn=$('captureBtn'), flipBtn=$('flipBtn'), flash=$('flash'), logo=new Image();
+const captureBtn=$('captureBtn'), flipBtn=$('flipBtn'), effectBtn=$('effectBtn'), flash=$('flash'), logo=new Image();
 logo.src='./assets/team-logo.png';
 const ios=/iPhone|iPad|iPod/i.test(navigator.userAgent)||(navigator.platform==='MacIntel' && navigator.maxTouchPoints>1);
 let faceLandmarker=null,stream=null,facingMode='user',lastVideoTime=-1,visibleSmile=false;
 const faceTracker=createFaceTracker(3);
 let latestGeometry=null, photoBlob=null,photoUrl=null,loading=false,raf=null,showCamera=false;
-let toastHandle=null,lastScan=0;
+let toastHandle=null,lastScan=0,effectIndex=0,effectChangedAt=0;
 const TRACK_INTERVAL_MS=115;
 const MEDIA_VERSION='0.10.35';
 const MEDIA_CDNS=[
@@ -61,19 +61,19 @@ function render(now){
         const faces=faceTracker.update(result,now);
         visibleSmile=faces.some(face=>face.smiling);
         if(!faces.length)setStatus('Coloca tu rostro en el centro');
-        else setStatus(faces.length+' '+(faces.length===1?'rostro detectado':'rostros detectados')+' · '+(visibleSmile?'¡Sonrisa activada!':'sonríe para tu corona'));
+        else setStatus(faces.length+' '+(faces.length===1?'rostro detectado':'rostros detectados')+' · '+(visibleSmile?'¡Efecto activo!':'sonríe para activar'));
       }catch(error){console.warn('Tracking:',error);setStatus('Reintentando seguimiento facial');}
     }
     if(latestGeometry){
       const faces=faceTracker.getFaces(now);
       visibleSmile=faces.some(face=>face.smiling);
       for(const face of faces){
-        if(face.smiling)drawCrown(ctx,face.landmarks,latestGeometry,now,face.smileAt);
+        if(face.smiling)drawFaceEffect(ctx,face.landmarks,latestGeometry,now,Math.max(face.smileAt??now,effectChangedAt),effectIndex);
       }
     }
   }else{paintBackground(W,H);latestGeometry=null;}
-  drawFrame(ctx,W,H,logo);
-  const hintMessage=visibleSmile?'¡Somos Elegantísimos!':'Sonríe y activa tu corona lila';
+  drawFrame(ctx,W,H);
+  const hintMessage=visibleSmile?'¡Somos Elegantísimos!':'Sonríe para activar el efecto';
   if(hint.textContent!==hintMessage)hint.textContent=hintMessage;
   raf=requestAnimationFrame(render);
 }
@@ -169,8 +169,16 @@ function setPhoto(blob){
 }
 function capture(){
   if(!showCamera)return;
+  // Snapshot del canvas SIN logos de interfaz; el logo oficial se estampa solo en la foto.
+  const snapshot=document.createElement('canvas');
+  snapshot.width=canvas.width;snapshot.height=canvas.height;
+  const photoCtx=snapshot.getContext('2d',{alpha:false});
+  if(!photoCtx){showToast('No se pudo preparar la foto');return;}
+  photoCtx.drawImage(canvas,0,0);
+  photoCtx.setTransform(canvas.width/stage.clientWidth,0,0,canvas.height/stage.clientHeight,0,0);
+  drawPhotoBrand(photoCtx,stage.clientWidth,stage.clientHeight,logo);
   flash.classList.remove('active');void flash.offsetWidth;flash.classList.add('active');
-  canvas.toBlob(async blob=>{
+  snapshot.toBlob(async blob=>{
     if(!blob){showToast('No se pudo guardar la captura');return;}
     setPhoto(blob);
     try{await savePhoto(blob);}catch(error){console.warn('Galería local no disponible:',error);showToast('Guarda la foto en tu dispositivo; la galería local no está disponible.');}
@@ -219,6 +227,19 @@ function setup(){
   resize();window.addEventListener('resize',resize);
   if(window.visualViewport)window.visualViewport.addEventListener('resize',resize);
   startBtn.addEventListener('click',activate);
+  const setEffectLabel=()=>{
+    const item=EFFECTS[effectIndex];
+    $('effectName').textContent=`${effectIndex+1} / ${EFFECTS.length} · ${item.name}`;
+    effectBtn.setAttribute('aria-label','Cambiar efecto, actual: '+item.name);
+    effectBtn.setAttribute('title','Siguiente efecto: '+EFFECTS[nextEffectIndex(effectIndex)].name);
+  };
+  setEffectLabel();
+  effectBtn.addEventListener('click',()=>{
+    effectIndex=nextEffectIndex(effectIndex);
+    effectChangedAt=performance.now();
+    setEffectLabel();
+    showToast('Efecto '+(effectIndex+1)+' de '+EFFECTS.length+': '+EFFECTS[effectIndex].name);
+  });
   flipBtn.addEventListener('click',flipCamera);
   captureBtn.addEventListener('click',capture);
   $('galleryBtn').addEventListener('click',showGallery);
