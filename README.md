@@ -6,8 +6,8 @@ Demo técnica lista para alojamiento estático. **No se ha validado aún física
 
 - Seguimiento facial con **MediaPipe Face Landmarker** y *blendshapes* (sin backend).
 - Sin textos en los pómulos: se retiraron «Zum» / «baa!» a pedido del cliente.
-- Corona lila «ELEGANTÍSIMOS» al sonreír, con animación ligera de neblina y activación individual por persona.
-- Marco de curvas lilas con discretos acentos fucsia, verde y turquesa; logotipo oficial más pequeño y lema «Tendencia y elegancia».
+- Selector circular de **3 efectos** al sonreír: Emblema lila (caligrafía y cintas, sin corona de puntas), Neblina elegante y Elegancia tricolor (fucsia/verde/turquesa). El botón cambia **1 → 2 → 3 → 1**, con activación independiente por rostro.
+- Marco de curvas lilas. El logotipo oficial se muestra discretamente en la esquina superior derecha del visor como HTML y **no entra en la foto**; al capturar se estampa un sello independiente del logotipo y el lema «Tendencia y elegancia» en el PNG.
 - Cámaras frontal (previsualización espejo, con texto NO invertido) y trasera.
 - Captura real de foto compuesta (cámara + filtro + marca) a PNG.
 - Descarga Android/desktop, share sheet en iOS con alternativa de pulsación prolongada para guardar.
@@ -32,7 +32,7 @@ La primera carga necesita Internet para descargar MediaPipe, su runtime WASM y e
 
 ### Personalización
 
-- `src/renderer.js`: `drawFrame` (marco), `drawCrown` (corona y neblina); `src/faces.js` (gestión de 3 rostros y sonrisas independientes).
+- `src/renderer.js`: `drawFrame` (marco), `drawFaceEffect` (tres animaciones), `drawPhotoBrand` (solo foto); `src/faces.js` (gestión de 3 rostros y sonrisas independientes).
 - `src/faces.js`: `makeSmileGate(.46,.29,170)`: umbrales de activación/desactivación y tiempo de confirmación; ajústalos con personas reales, en distintas luces y teléfonos.
 - `style.css`: interfaz y botones.
 - `assets/team-logo.png`: marca del anuncio recibido.
@@ -53,4 +53,11 @@ La primera carga necesita Internet para descargar MediaPipe, su runtime WASM y e
 npm test
 ```
 
-Cobertura de geometría, espejo, sonrisa independiente por persona y reordenamiento de rostros; adicionalmente son **obligatorias las pruebas físicas** de Safari/iPhone y Chrome/Android antes del despliegue público.
+Cobertura de geometría, espejo, carrusel en bucle, marca diferenciada entre visor y foto, tres efectos, sonrisa independiente por persona y reordenamiento de rostros; adicionalmente son **obligatorias las pruebas físicas** de Safari/iPhone y Chrome/Android antes del despliegue público.
+
+## Notas de la revisión v3
+- Los cuatro controles móviles quedan agrupados abajo: **Fotos / Efectos / Capturar / Girar**.
+- El logo de vista previa es solo UI y no se exporta; el logo en la foto se añade a una copia del canvas en el momento de capturar.
+- No se modifica el motor MediaPipe ni se añaden videos, fuentes externas, bibliotecas 3D o archivos adicionales de efectos. Se conserva la carga de modelo de la versión previa.
+- El carrusel cambia el mismo efecto para todos los rostros visibles; cada persona activa su aparición independientemente al sonreír.
+- Prueba la colocación de los efectos con personas altas, cabezas cerca del borde superior y tres personas a distinta distancia antes de entregar el filtro.
