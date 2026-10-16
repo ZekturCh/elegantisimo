@@ -127,7 +127,7 @@ export function drawFaceEffect(ctx,landmarks,geometry,now=0,smileAt=now,mode=0) 
   const top=projectLandmark(landmarks[10],geometry);
   const le=projectLandmark(landmarks[33],geometry),re=projectLandmark(landmarks[263],geometry);
   const eyeDistance=Math.hypot(re.x-le.x,re.y-le.y);
-  const width=clamp(eyeDistance*2.25,92,290);
+  const width=clamp(eyeDistance*2.25,68,260);
   let angle=Math.atan2(re.y-le.y,re.x-le.x);
   if(Math.cos(angle)<0)angle+=angle>0?-Math.PI:Math.PI;
   const elapsed=Math.max(0,now-(smileAt??now));
