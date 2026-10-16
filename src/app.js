@@ -1,4 +1,5 @@
-import {clamp, getCoverGeometry, projectLandmark, smileScore, makeSmileGate, drawFrame, drawCheeks, drawCrown} from './renderer.js';
+import {clamp, getCoverGeometry, drawFrame, drawCrown} from './renderer.js';
+import {createFaceTracker} from './faces.js';
 import {listPhotos, savePhoto} from './gallery.js';
 
 const $=id=>document.getElementById(id);
@@ -7,10 +8,11 @@ const stage=$('stage'), startup=$('startup'), startBtn=$('startBtn'), status=$('
 const captureBtn=$('captureBtn'), flipBtn=$('flipBtn'), flash=$('flash'), logo=new Image();
 logo.src='./assets/team-logo.png';
 const ios=/iPhone|iPad|iPod/i.test(navigator.userAgent)||(navigator.platform==='MacIntel' && navigator.maxTouchPoints>1);
-let faceLandmarker=null,stream=null,facingMode='user',lastVideoTime=-1,latestLandmarks=null,visibleSmile=false;
+let faceLandmarker=null,stream=null,facingMode='user',lastVideoTime=-1,visibleSmile=false;
+const faceTracker=createFaceTracker(3);
 let latestGeometry=null, photoBlob=null,photoUrl=null,loading=false,raf=null,showCamera=false;
-let toastHandle=null,lastScan=0,lastFaceAt=0;
-const smileGate=makeSmileGate(.46,.29,170);
+let toastHandle=null,lastScan=0;
+const TRACK_INTERVAL_MS=115;
 const MEDIA_VERSION='0.10.35';
 const MEDIA_CDNS=[
   `https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@${MEDIA_VERSION}`,
@@ -52,35 +54,32 @@ function render(now){
   const W=stage.clientWidth,H=stage.clientHeight;
   if(showCamera && video.readyState>=2 && video.videoWidth>0 && video.videoHeight>0){
     latestGeometry=drawVideo(W,H);
-    if(faceLandmarker && now-lastScan>75 && video.currentTime!==lastVideoTime){
+    if(faceLandmarker && now-lastScan>TRACK_INTERVAL_MS && video.currentTime!==lastVideoTime){
       lastScan=now;lastVideoTime=video.currentTime;
       try{
         const result=faceLandmarker.detectForVideo(video,now);
-        latestLandmarks=result.faceLandmarks?.[0] ?? null;
-        if(latestLandmarks){
-          lastFaceAt=now;
-          const score=smileScore(result.faceBlendshapes?.[0]?.categories);
-          visibleSmile=smileGate.update(score,now);
-          if(now%1600<90)setStatus(visibleSmile?'¡Corona desbloqueada! ✨':'Rostro detectado ✓');
-        }else{
-          visibleSmile=false;smileGate.reset();setStatus('Coloca tu rostro en el centro');
-        }
+        const faces=faceTracker.update(result,now);
+        visibleSmile=faces.some(face=>face.smiling);
+        if(!faces.length)setStatus('Coloca tu rostro en el centro');
+        else setStatus(faces.length+' '+(faces.length===1?'rostro detectado':'rostros detectados')+' · '+(visibleSmile?'¡Sonrisa activada!':'sonríe para tu corona'));
       }catch(error){console.warn('Tracking:',error);setStatus('Reintentando seguimiento facial');}
     }
-    if(now-lastFaceAt>1100){latestLandmarks=null;visibleSmile=false;smileGate.reset();}
-    if(latestLandmarks && latestGeometry){
-      drawCheeks(ctx,latestLandmarks,latestGeometry);
-      if(visibleSmile)drawCrown(ctx,latestLandmarks,latestGeometry,now);
+    if(latestGeometry){
+      const faces=faceTracker.getFaces(now);
+      visibleSmile=faces.some(face=>face.smiling);
+      for(const face of faces){
+        if(face.smiling)drawCrown(ctx,face.landmarks,latestGeometry,now,face.smileAt);
+      }
     }
   }else{paintBackground(W,H);latestGeometry=null;}
   drawFrame(ctx,W,H,logo);
-  const hintMessage=visibleSmile?'¡Esa sonrisa está de campeonato! ✨':'Sonríe y desbloquea tu corona ✨';
+  const hintMessage=visibleSmile?'¡Somos Elegantísimos!':'Sonríe y activa tu corona lila';
   if(hint.textContent!==hintMessage)hint.textContent=hintMessage;
   raf=requestAnimationFrame(render);
 }
 function stopCamera(){
   if(stream){for(const track of stream.getTracks())track.stop();stream=null;}
-  video.pause();video.srcObject=null;showCamera=false;latestLandmarks=null;visibleSmile=false;smileGate.reset();
+  video.pause();video.srcObject=null;showCamera=false;visibleSmile=false;faceTracker.reset();
 }
 async function startCamera(){
   if(!window.isSecureContext)throw new Error('La cámara requiere HTTPS o localhost. Usa GitHub Pages o Firebase Hosting.');
@@ -104,7 +103,7 @@ async function startCamera(){
     video.onloadedmetadata=()=>{clearTimeout(timer);resolve();};
   });
   await video.play();
-  lastVideoTime=-1;lastScan=0;lastFaceAt=0;showCamera=true;
+  lastVideoTime=-1;lastScan=0;faceTracker.reset();showCamera=true;
   setStatus('Buscando rostro…');
 }
 async function loadModel(){
@@ -118,7 +117,7 @@ async function loadModel(){
       const vision=await FilesetResolver.forVisionTasks(`${base}/wasm`);
       const opts={
         baseOptions:{modelAssetPath:MODEL,delegate:'GPU'},
-        runningMode:'VIDEO',numFaces:1,outputFaceBlendshapes:true,
+        runningMode:'VIDEO',numFaces:3,outputFaceBlendshapes:true,
         minFaceDetectionConfidence:.5,minFacePresenceConfidence:.5,minTrackingConfidence:.5
       };
       try{
