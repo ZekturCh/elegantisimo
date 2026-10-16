@@ -6,3 +6,53 @@
 .logo-start{max-width:76%;max-height:75px;filter:drop-shadow(0 0 9px #9d6db25a)}
 .primary-btn{background:linear-gradient(125deg,#f1d9fb,#c39bdd)}
 .shutter{box-shadow:0 0 0 3px #d7a5e988,0 0 22px #c58bff60,0 8px 24px #09020c}
+
+/* V3: visor sin marca superpuesta a los controles; sello solo al capturar. */
+.preview-brand{
+  position:absolute;z-index:2;
+  top:calc(env(safe-area-inset-top) + 92px);right:15px;
+  width:min(25vw,100px);min-width:70px;pointer-events:none;
+  opacity:.88;filter:drop-shadow(0 2px 12px #160a24dd);
+}
+.preview-brand img{display:block;width:100%;height:auto;object-fit:contain}
+.hud-top .overline{font-size:11px;color:#f9e9ff}
+.hud-hint{
+  bottom:calc(env(safe-area-inset-bottom) + 169px);
+  font-size:12px;max-width:310px;margin:0 auto
+}
+.effect-indicator{
+  position:absolute;z-index:4;
+  left:50%;transform:translateX(-50%);
+  bottom:calc(env(safe-area-inset-bottom) + 125px);
+  pointer-events:none;white-space:nowrap;
+  text-align:center;font-size:11px;font-weight:800;
+  color:#fff3ff;background:#2a113ad9;
+  border:1px solid #e8b4f48f;border-radius:30px;
+  padding:7px 15px;max-width:calc(100% - 24px);
+  overflow:hidden;text-overflow:ellipsis;
+  box-shadow:0 4px 16px #1e092d77
+}
+.hud-actions{
+  bottom:calc(env(safe-area-inset-bottom) + 32px);
+  display:grid;grid-template-columns:52px 52px 76px 52px;
+  width:max-content;max-width:calc(100% - 18px);
+  left:50%;right:auto;transform:translateX(-50%);
+  justify-content:center;justify-items:center;align-items:center;gap:12px
+}
+.action-circle{width:52px;height:66px;min-width:48px;filter:drop-shadow(0 2px 7px #000)}
+.action-circle svg{width:26px;height:26px}
+.action-circle small{font-size:10px}
+.shutter{width:74px;height:74px}
+#effectBtn svg{color:#f3d4ff}
+#effectBtn:active svg{transform:rotate(22deg)}
+@media(max-width:355px){
+  .hud-actions{grid-template-columns:48px 48px 70px 48px;gap:8px}
+  .action-circle{width:48px}.shutter{width:68px;height:68px}
+  .preview-brand{width:72px;right:10px}
+}
+@media(max-height:610px){
+  .preview-brand{top:calc(env(safe-area-inset-top) + 72px);width:73px}
+  .hud-actions{bottom:calc(env(safe-area-inset-bottom) + 25px)}
+  .effect-indicator{bottom:calc(env(safe-area-inset-bottom) + 113px)}
+  .hud-hint{bottom:calc(env(safe-area-inset-bottom) + 154px)}
+}
