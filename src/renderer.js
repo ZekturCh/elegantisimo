@@ -113,7 +113,7 @@ function floatingTitle(ctx,title,w,py=0,fontRatio=.11){
   const textW=w*.94,barH=Math.max(25,fontSize*1.55);
   ctx.save();
   ctx.fillStyle='#311242df';ctx.strokeStyle='#dcb0eabc';ctx.lineWidth=1.3;
-  roundRect(ctx,-w*.49,py-barH*.5,w*.98,barH,barH*.5);
+  ctx.beginPath();ctx.roundRect(-w*.49,py-barH*.5,w*.98,barH,barH*.5);
   ctx.fill();ctx.stroke();
   ctx.font='900 '+fontSize+'px system-ui,Arial';
   ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillStyle='#fff7ff';
