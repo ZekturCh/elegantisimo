@@ -44,78 +44,138 @@ function softMist(ctx,x,y,r,opacity,color='#dab2f2') {
   grad.addColorStop(0,color);grad.addColorStop(.42,'#bc8de177');grad.addColorStop(1,'#bc8de100');
   ctx.save();ctx.globalAlpha=opacity;ctx.fillStyle=grad;ctx.beginPath();ctx.arc(x,y,r,0,Math.PI*2);ctx.fill();ctx.restore();
 }
-export function drawFrame(ctx,W,H,logo) {
-  ctx.save();
+
+export const EFFECTS = Object.freeze([
+  Object.freeze({id:'emblema',name:'Emblema lila'}),
+  Object.freeze({id:'neblina',name:'Neblina elegante'}),
+  Object.freeze({id:'tricolor',name:'Elegancia tricolor'})
+]);
+export const nextEffectIndex = index => (index + 1) % EFFECTS.length;
+
+/** Apenas curvas y gradientes de Canvas: sin videos, imágenes ni motor 3D adicional. */
+export function drawFrame(ctx,W,H) {
   const s=Math.min(W/390,H/680);
+  ctx.save();
   const shade=ctx.createLinearGradient(0,0,0,H);
-  shade.addColorStop(0,'#160922b8');shade.addColorStop(.17,'#17072408');shade.addColorStop(.70,'#16082100');shade.addColorStop(1,'#160722c8');
+  shade.addColorStop(0,'#17091fa1');shade.addColorStop(.15,'#13071c00');
+  shade.addColorStop(.72,'#13071c00');shade.addColorStop(1,'#190c27b6');
   ctx.fillStyle=shade;ctx.fillRect(0,0,W,H);
-  // Curving, lilac fabric-like shapes replace the original neon straight edges.
   ctx.lineCap='round';
   for(const [sx,sy,flipX,flipY] of [[0,0,1,1],[W,0,-1,1],[0,H,1,-1],[W,H,-1,-1]]) {
     ctx.save();ctx.translate(sx,sy);ctx.scale(flipX,flipY);
-    const grad=ctx.createLinearGradient(0,0,115*s,158*s);
-    grad.addColorStop(0,'#dcb9ecb0');grad.addColorStop(.5,'#b683e36b');grad.addColorStop(1,'#a477e400');
-    ctx.strokeStyle=grad;ctx.lineWidth=6*s;ctx.beginPath();
-    ctx.moveTo(0,116*s);ctx.bezierCurveTo(38*s,98*s,17*s,25*s,132*s,0);ctx.stroke();
-    ctx.strokeStyle='#f0d2f573';ctx.lineWidth=1.4*s;ctx.beginPath();
-    ctx.moveTo(0,135*s);ctx.bezierCurveTo(55*s,103*s,38*s,32*s,151*s,0);ctx.stroke();
+    const grad=ctx.createLinearGradient(0,0,140*s,160*s);
+    grad.addColorStop(0,'#e9cbf7ad');grad.addColorStop(.5,'#b48ad684');grad.addColorStop(1,'#a477e400');
+    ctx.strokeStyle=grad;ctx.lineWidth=4.5*s;ctx.beginPath();
+    ctx.moveTo(0,117*s);ctx.bezierCurveTo(39*s,89*s,18*s,28*s,134*s,0);ctx.stroke();
+    ctx.strokeStyle='#f0d2f55c';ctx.lineWidth=1.2*s;ctx.beginPath();
+    ctx.moveTo(0,135*s);ctx.bezierCurveTo(45*s,102*s,36*s,32*s,151*s,0);ctx.stroke();
     ctx.restore();
   }
-  // Subtle accents from the team's secondary fuchsia, turquoise and green palette.
-  for(const [x,y,color] of [[W*.14,H*.23,'#e967b6'],[W*.9,H*.43,'#67d2cb'],[W*.1,H*.68,'#9cda88']]){
-    softMist(ctx,x,y,13*s,.20,color);
-  }
-  const titleY=Math.max(48*s,H*.055);
-  ctx.textAlign='center';ctx.textBaseline='middle';ctx.shadowColor='#2b0b47';ctx.shadowBlur=11*s;
-  ctx.fillStyle='#f9edff';ctx.font='800 '+(11*s)+'px system-ui,Arial';
-  ctx.fillText('TEAM ELEGANTÍSIMOS',W/2,titleY,Math.max(200*s,W*.76));
-  ctx.shadowBlur=0;
-  // Reduce the official logo rather than replacing it with invented branding.
-  const logoWidth=Math.min(W*.40,170*s),logoHeight=logoWidth*(362/1421);
-  const logoY=H-Math.max(70*s,H*.098)-logoHeight;
-  if(logo?.complete&&logo.naturalWidth){
-    ctx.shadowColor='#a975caaa';ctx.shadowBlur=7*s;
-    ctx.drawImage(logo,(W-logoWidth)/2,logoY,logoWidth,logoHeight);ctx.shadowBlur=0;
-  }else{
-    ctx.font='800 '+(14*s)+'px system-ui,Arial';ctx.fillStyle='#efdbff';
-    ctx.fillText('ELEGANTÍSIMOS',W/2,logoY+logoHeight*.7);
-  }
-  ctx.font='700 '+(9*s)+'px system-ui,Arial';ctx.fillStyle='#ebd4ff';
-  ctx.fillText('TENDENCIA Y ELEGANCIA',W/2,logoY-14*s);
   ctx.restore();
 }
-/** Procedural 2D crown and one-shot mist: no extra model, video or particle framework. */
-export function drawCrown(ctx,landmarks,geometry,now=0,smileAt=0) {
+
+/** Sello oficial SOLO en la foto exportada; no es parte de la previsualización. */
+export function drawPhotoBrand(ctx,W,H,logo) {
+  const s=Math.min(W/390,H/680);
+  const logoWidth=Math.min(W*.49,196*s);
+  const ratio=logo?.naturalWidth&&logo?.naturalHeight ? logo.naturalHeight/logo.naturalWidth : 362/1421;
+  const logoHeight=logoWidth*ratio;
+  const centerX=W/2;
+  const y=H-38*s-logoHeight;
+  const pad=18*s;
+  ctx.save();
+  const g=ctx.createRadialGradient(centerX,y+logoHeight/2,5,centerX,y+logoHeight/2,logoWidth*.85);
+  g.addColorStop(0,'#190d2ac9');g.addColorStop(1,'#190d2a00');
+  ctx.fillStyle=g;ctx.fillRect(centerX-logoWidth*.85,y-23*s,logoWidth*1.7,logoHeight+56*s);
+  if(logo?.complete&&logo?.naturalWidth){
+    ctx.shadowColor='#2a0f43';ctx.shadowBlur=10*s;
+    ctx.drawImage(logo,centerX-logoWidth/2,y,logoWidth,logoHeight);
+    ctx.shadowBlur=0;
+  }else{
+    ctx.fillStyle='#fff7ff';ctx.font='900 '+(16*s)+'px system-ui,Arial';
+    ctx.textAlign='center';ctx.fillText('TEAM ELEGANTÍSIMOS',centerX,y+logoHeight*.65);
+  }
+  ctx.font='800 '+Math.max(9,9*s)+'px system-ui,Arial';
+  ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillStyle='#f4dafa';
+  ctx.fillText('TENDENCIA Y ELEGANCIA',centerX,y-9*s,logoWidth+pad);
+  ctx.restore();
+}
+
+function ribbon(ctx,w,offset=0,color='#e5b9f5'){
+  ctx.beginPath();
+  ctx.moveTo(-w*.46,offset+w*.08);
+  ctx.bezierCurveTo(-w*.28,offset-w*.11,-w*.12,offset-w*.02,0,offset-w*.16);
+  ctx.bezierCurveTo(w*.14,offset-w*.02,w*.28,offset-w*.11,w*.46,offset+w*.08);
+  ctx.strokeStyle=color;ctx.lineWidth=Math.max(2,w*.017);ctx.lineCap='round';ctx.stroke();
+}
+function floatingTitle(ctx,title,w,py=0,fontRatio=.11){
+  const fontSize=clamp(w*fontRatio,10,29);
+  const textW=w*.94,barH=Math.max(25,fontSize*1.55);
+  ctx.save();
+  ctx.fillStyle='#311242df';ctx.strokeStyle='#dcb0eabc';ctx.lineWidth=1.3;
+  ctx.beginPath();ctx.roundRect(-w*.49,py-barH*.5,w*.98,barH,barH*.5);
+  ctx.fill();ctx.stroke();
+  ctx.font='900 '+fontSize+'px system-ui,Arial';
+  ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillStyle='#fff7ff';
+  ctx.shadowColor='#d3a4e5';ctx.shadowBlur=5;ctx.fillText(title,0,py,textW);
+  ctx.restore();
+}
+
+/** Tres variantes realmente distintas; cada rostro dibuja la seleccionada. */
+export function drawFaceEffect(ctx,landmarks,geometry,now=0,smileAt=now,mode=0) {
   if(!landmarks?.[10]||!landmarks?.[33]||!landmarks?.[263])return;
   const top=projectLandmark(landmarks[10],geometry);
-  const left=projectLandmark(landmarks[33],geometry),right=projectLandmark(landmarks[263],geometry);
-  const eyeDistance=Math.hypot(right.x-left.x,right.y-left.y);
-  const width=clamp(eyeDistance*1.74,68,275),h=width*.36;
-  let angle=Math.atan2(right.y-left.y,right.x-left.x);
+  const le=projectLandmark(landmarks[33],geometry),re=projectLandmark(landmarks[263],geometry);
+  const eyeDistance=Math.hypot(re.x-le.x,re.y-le.y);
+  const width=clamp(eyeDistance*2.25,68,260);
+  let angle=Math.atan2(re.y-le.y,re.x-le.x);
   if(Math.cos(angle)<0)angle+=angle>0?-Math.PI:Math.PI;
   const elapsed=Math.max(0,now-(smileAt??now));
-  const appear=clamp(elapsed/220,.15,1);
-  ctx.save();ctx.translate(top.x,top.y-width*.24);ctx.rotate(angle);ctx.globalAlpha=appear;
-  if(elapsed<780){
-    const fade=1-elapsed/780;
-    for(const [dx,dy,scale] of [[-.42,-.03,.28],[.34,-.08,.31],[-.04,-.24,.29]]){
-      softMist(ctx,width*dx*(1+elapsed/900),h*dy-width*.02,width*scale*(1+elapsed/400),fade*.24);
+  const appear=clamp(elapsed/230,.15,1);
+  ctx.save();
+  ctx.translate(top.x,top.y-eyeDistance*.42);
+  ctx.rotate(angle);
+  ctx.globalAlpha=appear;
+  if(mode===0){
+    // Emblema lila: caligrafía suspendida y dos cintas, NO corona de puntas.
+    const grad=ctx.createLinearGradient(-width*.5,0,width*.5,0);
+    grad.addColorStop(0,'#9259b9');grad.addColorStop(.5,'#fff0ff');grad.addColorStop(1,'#9259b9');
+    ctx.shadowColor='#d3a8f4';ctx.shadowBlur=width*.09;
+    ribbon(ctx,width,-width*.14,grad);
+    ribbon(ctx,width*.81,width*.16,'#eabaf4aa');
+    ctx.shadowBlur=0;
+    floatingTitle(ctx,'ELEGANTÍSIMOS',width,0,.112);
+    softMist(ctx,-width*.42,-width*.1,width*.25,.23);
+    softMist(ctx,width*.42,-width*.1,width*.25,.23);
+  }else if(mode===1){
+    // Neblina: columnas de vapor radial a ambos lados, texto minimalista.
+    const pulse=1+Math.sin(now/630)*.07;
+    softMist(ctx,-width*.37,0,width*.52*pulse,.30);
+    softMist(ctx,width*.33,-width*.1,width*.55*pulse,.31);
+    softMist(ctx,0,-width*.22,width*.44*pulse,.17);
+    ctx.strokeStyle='#eac6f1a6';ctx.lineWidth=Math.max(1.5,width*.012);
+    ctx.beginPath();ctx.moveTo(-width*.46,width*.10);
+    ctx.bezierCurveTo(-width*.28,-width*.28,width*.18,width*.05,width*.46,-width*.20);ctx.stroke();
+    floatingTitle(ctx,'SOMOS ELEGANTÍSIMOS',width*1.05,width*.09,.079);
+  }else{
+    // Tres cintas con los colores que el Team indicó: fucsia, turquesa y verde.
+    const colors=['#ed78b8','#58d4cf','#a1d98c'];
+    for(let i=0;i<3;i++){
+      const w=width*(.94-i*.13);
+      const dy=(-.25+i*.105)*width;
+      ctx.shadowColor=colors[i];ctx.shadowBlur=width*.045;
+      ctx.lineWidth=Math.max(2,width*.025);ctx.strokeStyle=colors[i];
+      ctx.beginPath();ctx.moveTo(-w*.5,dy+width*.035);
+      ctx.bezierCurveTo(-w*.22,dy-width*.17,w*.21,dy+width*.075,w*.49,dy-width*.035);
+      ctx.stroke();
     }
+    ctx.shadowBlur=0;
+    floatingTitle(ctx,'TEAM ELEGANTÍSIMOS',width,0,.092);
   }
-  ctx.shadowColor='#b87ddc';ctx.shadowBlur=width*.085;
-  const fill=ctx.createLinearGradient(0,-h*.7,0,h*.25);
-  fill.addColorStop(0,'#f8e4fc');fill.addColorStop(.55,'#bd8de4');fill.addColorStop(1,'#815bb0');
-  ctx.fillStyle=fill;ctx.strokeStyle='#f4d9fc';ctx.lineWidth=Math.max(1.5,width*.011);ctx.lineJoin='round';
-  ctx.beginPath();ctx.moveTo(-width*.44,h*.13);ctx.lineTo(-width*.43,-h*.34);
-  ctx.lineTo(-width*.23,-h*.06);ctx.lineTo(0,-h*.73);
-  ctx.lineTo(width*.23,-h*.06);ctx.lineTo(width*.43,-h*.34);
-  ctx.lineTo(width*.44,h*.13);ctx.closePath();ctx.fill();ctx.stroke();
-  ctx.shadowBlur=0;ctx.fillStyle='#4a2364dd';
-  ctx.beginPath();ctx.roundRect(-width*.46,-h*.04,width*.92,h*.29,h*.095);ctx.fill();
-  ctx.strokeStyle='#dfb8f5';ctx.lineWidth=Math.max(1,width*.007);ctx.stroke();
-  ctx.fillStyle='#fff7ff';ctx.textAlign='center';ctx.textBaseline='middle';
-  ctx.font='900 '+Math.max(9,width*.104)+'px system-ui,Arial';
-  ctx.fillText('ELEGANTÍSIMOS',0,h*.107,width*.88);
+  // Entrada suave común a los tres diseños.
+  if(elapsed<500){
+    const fade=1-elapsed/500;
+    softMist(ctx,0,-width*.04,width*.54,fade*.13);
+  }
   ctx.restore();
 }
