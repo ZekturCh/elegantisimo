@@ -1,0 +1,38 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {getCoverGeometry} from '../src/renderer.js';
+import {shoulderAnchor,createShoulderTracker,drawCompanion,INSTRUCTORS} from '../src/companion.js';
+const pose=(x=.5,visibility=1)=>{
+  const p=[];p[11]={x:x-.10,y:.45,visibility};p[12]={x:x+.10,y:.48,visibility};return p;
+};
+test('shoulder anchor respects selfie mirror and cover crop',()=>{
+  const g=getCoverGeometry(1280,720,390,760,false);
+  const a=shoulderAnchor(pose(.48),g),b=shoulderAnchor(pose(.48),{...g,mirror:true});
+  assert.ok(Math.abs(a.x+b.x-390)<1e-8);
+  assert.equal(a.span,b.span);assert.ok(Math.abs(a.angle+b.angle)<1e-8);
+  assert.equal(shoulderAnchor(pose(.5,.3),g),null);
+  assert.equal(shoulderAnchor([],g),null);
+});
+test('tracking smooths motion, fades on loss and reacquires without old-position drag',()=>{
+  const g=getCoverGeometry(640,480,640,480);
+  const tracker=createShoulderTracker();
+  const start=tracker.update(pose(),g,0);
+  const moved=tracker.update(pose(.6),g,100);
+  assert.ok(moved.x>start.x&&moved.x<384);
+  assert.ok(tracker.get(400).alpha<1);
+  assert.equal(tracker.get(451),null);
+  assert.equal(tracker.update(pose(.6),g,600).x,384);
+  tracker.reset();assert.equal(tracker.get(601),null);
+});
+test('front hand and rear body use identical placement and scale on either side',()=>{
+  for(const item of INSTRUCTORS)for(const side of [-1,1]){
+    const runs=[];
+    for(const front of [false,true]){
+      const ops=[],ctx={save(){},restore(){},translate(...a){ops.push(['translate',...a]);},rotate(...a){ops.push(['rotate',...a]);},scale(...a){ops.push(['scale',...a]);},beginPath(){},rect(){},clip(){},drawImage(...a){ops.push(['image',...a.slice(1)]);}};
+      drawCompanion(ctx,{naturalWidth:1536,naturalHeight:1024},{x:210,y:300,span:150,angle:.1,alpha:1},item.calibration,side,front);
+      runs.push(ops);
+    }
+    assert.deepEqual(runs[0],runs[1]);
+    assert.ok(runs[0].every(op=>op.slice(1).every(Number.isFinite)));
+  }
+});
