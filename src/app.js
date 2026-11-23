@@ -1,6 +1,8 @@
 import {clamp, getCoverGeometry, drawFrame, drawPhotoBrand} from './renderer.js';
 import {INSTRUCTORS,createShoulderTracker,drawCompanion} from './companion.js';
 import {listPhotos, savePhoto} from './gallery.js';
+import {createFaceTracker} from './faces.js';
+import {LOGOS,drawLogoEffect} from './logo-effects.js';
 
 const $=id=>document.getElementById(id);
 const video=$('sourceVideo'), canvas=$('cameraCanvas'), ctx=canvas.getContext('2d',{alpha:false});
@@ -9,6 +11,9 @@ const captureBtn=$('captureBtn'), flipBtn=$('flipBtn'), effectBtn=$('effectBtn')
 logo.src='./assets/team-logo.png';
 const ios=/iPhone|iPad|iPod/i.test(navigator.userAgent)||(navigator.platform==='MacIntel' && navigator.maxTouchPoints>1);
 let poseLandmarker=null,stream=null,facingMode='user',lastVideoTime=-1;
+let faceLandmarker=null,effectMode='hug',logoIndex=0,switching=false;
+const faceTracker=createFaceTracker(3);
+const logoImages=LOGOS.map(item=>{const image=new Image();image.src=item.src;return image;});
 const shoulderTracker=createShoulderTracker();
 const instructorImages=INSTRUCTORS.map(item=>{const image=new Image();image.src=item.src;return image;});
 let instructorIndex=0,side=1,maskReady=false;
@@ -37,7 +42,7 @@ function getResolution(){
   return{w,h,r:resolutionRatio};
 }
 function resize(){
-  shoulderTracker.reset();maskReady=false;
+  shoulderTracker.reset();faceTracker.reset();maskReady=false;
   const {w,h,r}=getResolution();canvas.width=Math.floor(w*r);canvas.height=Math.floor(h*r);
   ctx.setTransform(r,0,0,r,0,0);
   ctx.imageSmoothingEnabled=true;ctx.imageSmoothingQuality='high';
@@ -59,7 +64,12 @@ function render(now){
   const W=stage.clientWidth,H=stage.clientHeight;
   if(showCamera && video.readyState>=2 && video.videoWidth>0 && video.videoHeight>0){
     latestGeometry=drawVideo(W,H);
-    if(poseLandmarker && now-lastScan>TRACK_INTERVAL_MS && video.currentTime!==lastVideoTime){
+    if(!switching&&effectMode!=='hug'&&faceLandmarker&&now-lastScan>TRACK_INTERVAL_MS&&video.currentTime!==lastVideoTime){
+      lastScan=now;lastVideoTime=video.currentTime;
+      try{faceTracker.update(faceLandmarker.detectForVideo(video,now),now);}
+      catch(error){console.warn('Face tracking:',error);faceTracker.reset();}
+    }
+    if(!switching&&effectMode==='hug'&&poseLandmarker && now-lastScan>TRACK_INTERVAL_MS && video.currentTime!==lastVideoTime){
       lastScan=now;lastVideoTime=video.currentTime;
       try{
         // Consume masks inside the callback: avoid copying float masks via ImageFrame.
@@ -80,7 +90,7 @@ function render(now){
         setLoading('El seguimiento no pudo continuar. Actualiza el navegador y vuelve a activar la cámara.');
       }
     }
-    if(latestGeometry){
+    if(!switching&&effectMode==='hug'&&latestGeometry){
       const anchor=shoulderTracker.get(now),image=instructorImages[instructorIndex],item=INSTRUCTORS[instructorIndex];
       const ready=anchor&&maskReady&&image.complete&&image.naturalWidth;
       captureBtn.disabled=!ready;
@@ -100,17 +110,24 @@ function render(now){
         drawCompanion(ctx,image,anchor,item.calibration,side,true);
       }
     }
+    if(!switching&&effectMode!=='hug'&&latestGeometry){
+      const faces=faceTracker.getFaces(now),smiling=faces.filter(face=>face.smiling);
+      for(const face of smiling)drawLogoEffect(ctx,face.landmarks,latestGeometry,logoImages[logoIndex],LOGOS[logoIndex],effectMode,now,face.smileAt);
+      captureBtn.disabled=!smiling.length||!logoImages[logoIndex].naturalWidth;
+      setStatus(!faces.length?'Coloca tu rostro en el encuadre':smiling.length?'¡Sonrisa detectada! · Efecto activo':'Sonríe para activar '+(effectMode==='crown'?'la corona':'los lentes'));
+    }
+    if(switching){captureBtn.disabled=true;setStatus('Preparando efecto…');}
   }else{paintBackground(W,H);latestGeometry=null;}
   drawFrame(ctx,W,H);
   const tracked=shoulderTracker.get(now);
   const needsSpace=tracked&&(side===1?tracked.x>W*.43:tracked.x<W*.57);
-  const hintMessage=needsSpace?'Colócate a la '+(side===1?'izquierda':'derecha')+' para dejar espacio al instructor':tracked?'Mira a la cámara y toma tu foto':'Encuadra tu cabeza y ambos hombros';
+  const hintMessage=effectMode!=='hug'?'Sonríe y mantén la pose para tomar tu foto':needsSpace?'Colócate a la '+(side===1?'izquierda':'derecha')+' para dejar espacio al instructor':tracked?'Mira a la cámara y toma tu foto':'Encuadra tu cabeza y ambos hombros';
   if(hint.textContent!==hintMessage)hint.textContent=hintMessage;
   raf=requestAnimationFrame(render);
 }
 function stopCamera(){
   if(stream){for(const track of stream.getTracks())track.stop();stream=null;}
-  video.pause();video.srcObject=null;showCamera=false;maskReady=false;shoulderTracker.reset();captureBtn.disabled=true;
+  video.pause();video.srcObject=null;showCamera=false;maskReady=false;shoulderTracker.reset();faceTracker.reset();captureBtn.disabled=true;
 }
 async function startCamera(){
   if(!window.isSecureContext)throw new Error('La cámara requiere HTTPS o localhost. Usa GitHub Pages o Firebase Hosting.');
@@ -137,15 +154,21 @@ async function startCamera(){
   lastVideoTime=-1;lastScan=0;shoulderTracker.reset();showCamera=true;
   setStatus('Buscando hombros…');
 }
-async function loadModel(){
-  if(poseLandmarker)return;
+async function loadModel(mode=effectMode){
+  if(mode==='hug'?poseLandmarker:faceLandmarker)return;
   let lastError=null;
   for(const base of MEDIA_CDNS){
     try{
-      setLoading('Preparando seguimiento de hombros…');
+      setLoading(mode==='hug'?'Preparando seguimiento de hombros…':'Preparando detección de sonrisa…');
       // Importar el bundle ESM real: /+esm fallaba en la versión antigua inexistente.
-      const {PoseLandmarker,FilesetResolver}=await import(`${base}/vision_bundle.mjs`);
+      const {PoseLandmarker,FaceLandmarker,FilesetResolver}=await import(`${base}/vision_bundle.mjs`);
       const vision=await FilesetResolver.forVisionTasks(`${base}/wasm`);
+      if(mode!=='hug'){
+        const opts={baseOptions:{modelAssetPath:'https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task',delegate:'GPU'},runningMode:'VIDEO',numFaces:3,outputFaceBlendshapes:true,minFaceDetectionConfidence:.5,minFacePresenceConfidence:.5,minTrackingConfidence:.5};
+        try{faceLandmarker=await FaceLandmarker.createFromOptions(vision,opts);}
+        catch{opts.baseOptions.delegate='CPU';faceLandmarker=await FaceLandmarker.createFromOptions(vision,opts);}
+        return;
+      }
       const opts={
         baseOptions:{modelAssetPath:MODEL,delegate:'GPU'},
         runningMode:'VIDEO',numPoses:1,outputSegmentationMasks:true,
@@ -167,7 +190,7 @@ async function activate(){
   if(loading)return;loading=true;startBtn.disabled=true;
   setLoading('Pidiendo permiso para la cámara…');
   try{
-    await Promise.all(instructorImages.map(image=>image.decode()));
+    await Promise.all([...instructorImages,...logoImages].map(image=>image.decode()));
     await startCamera();await loadModel();
     startup.classList.add('hidden');$('fallback').classList.add('hidden');
     captureBtn.disabled=false;flipBtn.disabled=false;setLoading('');setStatus('Buscando rostro…');
@@ -256,11 +279,26 @@ function setup(){
   if(window.visualViewport)window.visualViewport.addEventListener('resize',resize);
   startBtn.addEventListener('click',activate);
   const setEffectLabel=()=>{
-    $('effectName').textContent=INSTRUCTORS[instructorIndex].name+' · Abrazo';
+    $('effectName').textContent=effectMode==='hug'?INSTRUCTORS[instructorIndex].name+' · Abrazo':(effectMode==='crown'?'Corona':'Lentes')+' · '+LOGOS[logoIndex].name;
+    $('instructorPicker').hidden=effectMode!=='hug';
+    $('logoPicker').hidden=effectMode==='hug';
+    effectBtn.disabled=effectMode!=='hug';
+    document.querySelectorAll('[data-mode]').forEach(button=>{button.setAttribute('aria-pressed',String(button.dataset.mode===effectMode));button.disabled=switching;});
+    $('logoSelect').value=String(logoIndex);
     document.querySelectorAll('[data-instructor]').forEach(button=>button.setAttribute('aria-pressed',String(Number(button.dataset.instructor)===instructorIndex)));
   };
   setEffectLabel();
   document.querySelectorAll('[data-instructor]').forEach(button=>button.addEventListener('click',()=>{instructorIndex=Number(button.dataset.instructor);setEffectLabel();}));
+  $('logoSelect').addEventListener('change',event=>{logoIndex=Number(event.target.value);setEffectLabel();});
+  document.querySelectorAll('[data-mode]').forEach(button=>button.addEventListener('click',async()=>{
+    if(switching||loading||button.dataset.mode===effectMode)return;
+    switching=true;captureBtn.disabled=true;setEffectLabel();
+    try{
+      if(showCamera)await loadModel(button.dataset.mode);
+      effectMode=button.dataset.mode;faceTracker.reset();shoulderTracker.reset();maskReady=false;lastScan=0;lastVideoTime=-1;
+    }catch(error){showToast(error.message||'No se pudo cargar el efecto');}
+    finally{switching=false;setEffectLabel();setLoading('');}
+  }));
   effectBtn.addEventListener('click',()=>{side*=-1;showToast('Instructor a tu '+(side===1?'derecha':'izquierda'));});
   flipBtn.addEventListener('click',flipCamera);
   captureBtn.addEventListener('click',capture);

@@ -10,7 +10,7 @@
   <meta name="description" content="Filtro AR Team Elegantísimos · Master Class Paolo. Elige instructor y toma tu foto con un abrazo virtual." />
   <title>Team Elegantísimos · Master Class Paolo AR</title>
   <link rel="icon" href="./assets/favicon.svg" type="image/svg+xml" />
-  <link rel="stylesheet" href="./style.css?v=20261123-abrazo-v1" />
+  <link rel="stylesheet" href="./style.css?v=20261123-abrazo-logos-v2" />
 </head>
 <body>
   <main class="app" id="app">
@@ -27,7 +27,7 @@
       </div>
       <div class="hud-hint" id="hint">Encuadra tu cabeza y ambos hombros</div>
       <div class="effect-indicator" id="effectName" aria-live="polite">Instructor 1 · Abrazo</div>
-      <div class="instructor-picker" role="group" aria-label="Elegir instructor"><button type="button" data-instructor="0" aria-pressed="true">Instructor 1</button><button type="button" data-instructor="1" aria-pressed="false">Instructor 2</button></div><div class="hud-actions" id="actions">
+      <div class="mode-picker" role="group" aria-label="Tipo de efecto"><button type="button" data-mode="hug" aria-pressed="true">Abrazo</button><button type="button" data-mode="crown" aria-pressed="false">Coronas</button><button type="button" data-mode="glasses" aria-pressed="false">Lentes</button></div><label id="logoPicker" class="logo-picker" hidden>Logo <select id="logoSelect"><option value="0">Elegantísimos blanco</option><option value="1">Team Paolo blanco</option><option value="2">Team Paolo color</option><option value="3">Elegantísimos lila</option></select></label><div id="instructorPicker" class="instructor-picker" role="group" aria-label="Elegir instructor"><button type="button" data-instructor="0" aria-pressed="true">Instructor 1</button><button type="button" data-instructor="1" aria-pressed="false">Instructor 2</button></div><div class="hud-actions" id="actions">
         <button class="action-circle" id="galleryBtn" title="Mis fotos" aria-label="Abrir mi galería">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect width="17" height="17" x="3" y="3" rx="3"/><circle cx="8.3" cy="8.2" r="1.7"/><path d="m4 16 4.5-4 3.6 3.1 2.3-2 5.4 5"/></svg><small>Fotos</small>
         </button>
@@ -50,8 +50,8 @@
         <div class="eyebrow">EXPERIENCIA AR</div>
         <img src="./assets/team-logo.png" alt="Team Elegantísimos" class="logo-start" />
         <h1 id="startupTitle">¡Somos Elegantísimos!</h1>
-        <p>Elige <strong>Instructor 1 o Instructor 2</strong> y posa con un abrazo virtual. Aléjate un poco para mostrar ambos hombros. Una persona por foto.</p>
-        <button id="startBtn" class="primary-btn">Activar cámara <span>↗</span></button>
+        <p>Elige <strong>Abrazo, Coronas o Lentes</strong>. Para el abrazo, muestra ambos hombros y elige instructor. Para coronas y lentes, elige tu logo y sonríe para activarlo.</p>
+        <div class="startup-modes" role="group" aria-label="Elegir efecto inicial"><button type="button" data-mode="hug" aria-pressed="true">Abrazo</button><button type="button" data-mode="crown" aria-pressed="false">Coronas</button><button type="button" data-mode="glasses" aria-pressed="false">Lentes</button></div><button id="startBtn" class="primary-btn">Activar cámara <span>↗</span></button>
         <p class="privacy-note">Tu imagen se procesa en el dispositivo. No subimos tus fotos a ningún servidor.</p>
         <p class="progress-note" id="loadMessage" aria-live="polite"></p>
       </div>
@@ -92,6 +92,6 @@
       </div>
     </section>
   </main>
-  <script type="module" src="./src/app.js?v=20261123-abrazo-v1"></script>
+  <script type="module" src="./src/app.js?v=20261123-abrazo-logos-v2"></script>
 </body>
 </html>
