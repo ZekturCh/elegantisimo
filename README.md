@@ -14,3 +14,4 @@ Coronas y Lentes permiten elegir los cuatro logos originales del chat. Se proyec
 
 API de referencia: https://developers.google.com/edge/mediapipe/solutions/vision/pose_landmarker?tab=Web
 Compatibilidad: requiere aceleración gráfica (GPU/WebGL). La ruta CPU falló al leer las máscaras de segmentación en las versiones verificadas; se evita ese fallback. Verificado con foto estática en Chrome/GPU, pendiente cámara en teléfonos.
+Corrección de oclusión: la máscara se compone directamente con DrawingUtils en el mismo contexto WebGL del modelo. Se evita getAsFloat32Array, que devolvía ceros en el equipo probado. Una máscara vacía o completamente opaca ya no habilita el abrazo ni la captura. Se verifican la silueta y la superposición del usuario sobre el brazo, además de las transformaciones de espejo y recorte. Pruebas: node --test tests/*.test.js (16 tests).

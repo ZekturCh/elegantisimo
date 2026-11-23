@@ -3,6 +3,7 @@ import {INSTRUCTORS,createShoulderTracker,drawCompanion} from './companion.js';
 import {listPhotos, savePhoto} from './gallery.js';
 import {createFaceTracker} from './faces.js';
 import {LOGOS,drawLogoEffect} from './logo-effects.js';
+import {maskHasForeground,drawMaskedUser} from './occlusion.js';
 
 const $=id=>document.getElementById(id);
 const video=$('sourceVideo'), canvas=$('cameraCanvas'), ctx=canvas.getContext('2d',{alpha:false});
@@ -18,7 +19,9 @@ const shoulderTracker=createShoulderTracker();
 const instructorImages=INSTRUCTORS.map(item=>{const image=new Image();image.src=item.src;return image;});
 let instructorIndex=0,side=1,maskReady=false;
 const maskCanvas=document.createElement('canvas'),maskCtx=maskCanvas.getContext('2d');
-const userCanvas=document.createElement('canvas'),userCtx=userCanvas.getContext('2d');
+const maskGpuCanvas=document.createElement('canvas');maskGpuCanvas.width=256;maskGpuCanvas.height=256;
+let maskDrawing=null;
+const userCanvas=document.createElement('canvas');
 let latestGeometry=null, photoBlob=null,photoUrl=null,loading=false,raf=null,showCamera=false;
 let toastHandle=null,lastScan=0;
 const TRACK_INTERVAL_MS=115;
@@ -72,16 +75,17 @@ function render(now){
     if(!switching&&effectMode==='hug'&&poseLandmarker && now-lastScan>TRACK_INTERVAL_MS && video.currentTime!==lastVideoTime){
       lastScan=now;lastVideoTime=video.currentTime;
       try{
-        // Consume masks inside the callback: avoid copying float masks via ImageFrame.
+        // Render the mask directly in its shared GPU context. Reading float masks
+        // back on this driver returns zeros even though the texture is valid.
         poseLandmarker.detectForVideo(video,now,result=>{
           shoulderTracker.update(result.landmarks?.[0],latestGeometry,now);
           maskReady=false;
           const mask=result.segmentationMasks?.[0];
-          if(mask){
-            maskCanvas.width=mask.width;maskCanvas.height=mask.height;
-            const pixels=maskCtx.createImageData(mask.width,mask.height),values=mask.getAsFloat32Array();
-            for(let i=0;i<values.length;i++){pixels.data[i*4]=255;pixels.data[i*4+1]=255;pixels.data[i*4+2]=255;pixels.data[i*4+3]=255*clamp((values[i]-.2)/.6,0,1);}
-            maskCtx.putImageData(pixels,0,0);maskReady=true;
+          if(mask&&maskDrawing){
+            maskDrawing.drawConfidenceMask(mask,[0,0,0,0],[255,255,255,255]);
+            if(maskCanvas.width!==256||maskCanvas.height!==256){maskCanvas.width=256;maskCanvas.height=256;}
+            maskCtx.clearRect(0,0,256,256);maskCtx.drawImage(maskGpuCanvas,0,0,256,256);
+            maskReady=maskHasForeground(maskCtx.getImageData(0,0,256,256).data);
           }
         });
       }catch(error){
@@ -97,16 +101,7 @@ function render(now){
       setStatus(ready?'Abrazo listo · mira a la cámara':!image.naturalWidth?'Preparando instructor…':'Aléjate un poco: muestra ambos hombros');
       if(ready){
         drawCompanion(ctx,image,anchor,item.calibration,side);
-        // Restore the real user over the instructor, using the same crop/mirror as the video.
-        const ratio=canvas.width/W;
-        if(userCanvas.width!==canvas.width||userCanvas.height!==canvas.height){userCanvas.width=canvas.width;userCanvas.height=canvas.height;}
-        userCtx.setTransform(ratio,0,0,ratio,0,0);userCtx.clearRect(0,0,W,H);drawVideo(W,H,userCtx);
-        userCtx.globalCompositeOperation='destination-in';userCtx.save();
-        const g=latestGeometry;
-        if(g.mirror){userCtx.translate(W,0);userCtx.scale(-1,1);}
-        userCtx.drawImage(maskCanvas,g.offsetX,g.offsetY,g.drawWidth,g.drawHeight);
-        userCtx.restore();userCtx.globalCompositeOperation='source-over';
-        ctx.drawImage(userCanvas,0,0,W,H);
+        drawMaskedUser(ctx,video,latestGeometry,maskCanvas,userCanvas,W,H,canvas.width/W);
         drawCompanion(ctx,image,anchor,item.calibration,side,true);
       }
     }
@@ -161,7 +156,7 @@ async function loadModel(mode=effectMode){
     try{
       setLoading(mode==='hug'?'Preparando seguimiento de hombros…':'Preparando detección de sonrisa…');
       // Importar el bundle ESM real: /+esm fallaba en la versión antigua inexistente.
-      const {PoseLandmarker,FaceLandmarker,FilesetResolver}=await import(`${base}/vision_bundle.mjs`);
+      const {PoseLandmarker,FaceLandmarker,FilesetResolver,DrawingUtils}=await import(`${base}/vision_bundle.mjs`);
       const vision=await FilesetResolver.forVisionTasks(`${base}/wasm`);
       if(mode!=='hug'){
         const opts={baseOptions:{modelAssetPath:'https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task',delegate:'GPU'},runningMode:'VIDEO',numFaces:3,outputFaceBlendshapes:true,minFaceDetectionConfidence:.5,minFacePresenceConfidence:.5,minTrackingConfidence:.5};
@@ -170,6 +165,7 @@ async function loadModel(mode=effectMode){
         return;
       }
       const opts={
+        canvas:maskGpuCanvas,
         baseOptions:{modelAssetPath:MODEL,delegate:'GPU'},
         runningMode:'VIDEO',numPoses:1,outputSegmentationMasks:true,
         minPoseDetectionConfidence:.6,minPosePresenceConfidence:.6,minTrackingConfidence:.6
@@ -177,6 +173,7 @@ async function loadModel(mode=effectMode){
       // Float segmentation masks fail on the tested CPU path. Require GPU instead
       // of offering a fallback that starts but cannot produce the embrace.
       poseLandmarker=await PoseLandmarker.createFromOptions(vision,opts);
+      maskDrawing=new DrawingUtils(maskGpuCanvas.getContext('webgl2'));
       return;
     }catch(error){
       lastError=error;
