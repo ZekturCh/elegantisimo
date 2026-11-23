@@ -1,5 +1,5 @@
 import {clamp, getCoverGeometry, drawFrame, drawPhotoBrand} from './renderer.js';
-import {INSTRUCTORS,createShoulderTracker,drawCompanion,createHandLayer} from './companion.js?v=20261123-wrist-v4';
+import {INSTRUCTORS,createShoulderTracker,drawCompanion} from './companion.js?v=20261123-wrist-v4';
 import {listPhotos, savePhoto} from './gallery.js';
 import {createFaceTracker} from './faces.js';
 import {LOGOS,drawLogoEffect} from './logo-effects.js';
@@ -17,7 +17,6 @@ const faceTracker=createFaceTracker(3);
 const logoImages=LOGOS.map(item=>{const image=new Image();image.src=item.src;return image;});
 const shoulderTracker=createShoulderTracker();
 const instructorImages=INSTRUCTORS.map(item=>{const image=new Image();image.src=item.src;return image;});
-const handLayers=[];
 let instructorIndex=0,side=1,maskReady=false;
 const maskCanvas=document.createElement('canvas'),maskCtx=maskCanvas.getContext('2d');
 const maskGpuCanvas=document.createElement('canvas');maskGpuCanvas.width=256;maskGpuCanvas.height=256;
@@ -103,7 +102,6 @@ function render(now){
       if(ready){
         drawCompanion(ctx,image,anchor,item.calibration,side);
         drawMaskedUser(ctx,video,latestGeometry,maskCanvas,userCanvas,W,H,canvas.width/W);
-        drawCompanion(ctx,image,anchor,item.calibration,side,true,handLayers[instructorIndex]);
       }
     }
     if(!switching&&effectMode!=='hug'&&latestGeometry){
@@ -189,7 +187,6 @@ async function activate(){
   setLoading('Pidiendo permiso para la cámara…');
   try{
     await Promise.all([...instructorImages,...logoImages].map(image=>image.decode()));
-    instructorImages.forEach((image,index)=>{handLayers[index]??=createHandLayer(image,INSTRUCTORS[index].calibration);});
     await startCamera();await loadModel();
     startup.classList.add('hidden');$('fallback').classList.add('hidden');
     captureBtn.disabled=false;flipBtn.disabled=false;setLoading('');setStatus('Buscando rostro…');
