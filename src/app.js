@@ -1,5 +1,5 @@
-import {clamp, getCoverGeometry, drawFrame, drawPhotoBrand, drawFaceEffect, EFFECTS, nextEffectIndex} from './renderer.js';
-import {createFaceTracker} from './faces.js';
+import {clamp, getCoverGeometry, drawFrame, drawPhotoBrand} from './renderer.js';
+import {INSTRUCTORS,createShoulderTracker,drawCompanion} from './companion.js';
 import {listPhotos, savePhoto} from './gallery.js';
 
 const $=id=>document.getElementById(id);
@@ -8,17 +8,21 @@ const stage=$('stage'), startup=$('startup'), startBtn=$('startBtn'), status=$('
 const captureBtn=$('captureBtn'), flipBtn=$('flipBtn'), effectBtn=$('effectBtn'), flash=$('flash'), logo=new Image();
 logo.src='./assets/team-logo.png';
 const ios=/iPhone|iPad|iPod/i.test(navigator.userAgent)||(navigator.platform==='MacIntel' && navigator.maxTouchPoints>1);
-let faceLandmarker=null,stream=null,facingMode='user',lastVideoTime=-1,visibleSmile=false;
-const faceTracker=createFaceTracker(3);
+let poseLandmarker=null,stream=null,facingMode='user',lastVideoTime=-1;
+const shoulderTracker=createShoulderTracker();
+const instructorImages=INSTRUCTORS.map(item=>{const image=new Image();image.src=item.src;return image;});
+let instructorIndex=0,side=1,maskReady=false;
+const maskCanvas=document.createElement('canvas'),maskCtx=maskCanvas.getContext('2d');
+const userCanvas=document.createElement('canvas'),userCtx=userCanvas.getContext('2d');
 let latestGeometry=null, photoBlob=null,photoUrl=null,loading=false,raf=null,showCamera=false;
-let toastHandle=null,lastScan=0,effectIndex=0,effectChangedAt=0;
+let toastHandle=null,lastScan=0;
 const TRACK_INTERVAL_MS=115;
 const MEDIA_VERSION='0.10.35';
 const MEDIA_CDNS=[
   `https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@${MEDIA_VERSION}`,
   `https://unpkg.com/@mediapipe/tasks-vision@${MEDIA_VERSION}`
 ];
-const MODEL='https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task';
+const MODEL='https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_lite/float16/1/pose_landmarker_lite.task';
 
 function showToast(message){
   const el=$('toast');el.textContent=message;el.classList.add('visible');clearTimeout(toastHandle);toastHandle=setTimeout(()=>el.classList.remove('visible'),3600);
@@ -33,6 +37,7 @@ function getResolution(){
   return{w,h,r:resolutionRatio};
 }
 function resize(){
+  shoulderTracker.reset();maskReady=false;
   const {w,h,r}=getResolution();canvas.width=Math.floor(w*r);canvas.height=Math.floor(h*r);
   ctx.setTransform(r,0,0,r,0,0);
   ctx.imageSmoothingEnabled=true;ctx.imageSmoothingQuality='high';
@@ -42,44 +47,70 @@ function paintBackground(W,H){
   grad.addColorStop(0,'#643c7c');grad.addColorStop(.46,'#2a143f');grad.addColorStop(1,'#080310');
   ctx.fillStyle=grad;ctx.fillRect(0,0,W,H);
 }
-function drawVideo(W,H){
+function drawVideo(W,H,target=ctx){
   const geometry=getCoverGeometry(video.videoWidth,video.videoHeight,W,H,facingMode==='user');
-  ctx.save();
-  if(geometry.mirror){ctx.translate(W,0);ctx.scale(-1,1);}
-  ctx.drawImage(video,geometry.offsetX,geometry.offsetY,geometry.drawWidth,geometry.drawHeight);
-  ctx.restore();
+  target.save();
+  if(geometry.mirror){target.translate(W,0);target.scale(-1,1);}
+  target.drawImage(video,geometry.offsetX,geometry.offsetY,geometry.drawWidth,geometry.drawHeight);
+  target.restore();
   return geometry;
 }
 function render(now){
   const W=stage.clientWidth,H=stage.clientHeight;
   if(showCamera && video.readyState>=2 && video.videoWidth>0 && video.videoHeight>0){
     latestGeometry=drawVideo(W,H);
-    if(faceLandmarker && now-lastScan>TRACK_INTERVAL_MS && video.currentTime!==lastVideoTime){
+    if(poseLandmarker && now-lastScan>TRACK_INTERVAL_MS && video.currentTime!==lastVideoTime){
       lastScan=now;lastVideoTime=video.currentTime;
       try{
-        const result=faceLandmarker.detectForVideo(video,now);
-        const faces=faceTracker.update(result,now);
-        visibleSmile=faces.some(face=>face.smiling);
-        if(!faces.length)setStatus('Coloca tu rostro en el centro');
-        else setStatus(faces.length+' '+(faces.length===1?'rostro detectado':'rostros detectados')+' · '+(visibleSmile?'¡Efecto activo!':'sonríe para activar'));
-      }catch(error){console.warn('Tracking:',error);setStatus('Reintentando seguimiento facial');}
+        // Consume masks inside the callback: avoid copying float masks via ImageFrame.
+        poseLandmarker.detectForVideo(video,now,result=>{
+          shoulderTracker.update(result.landmarks?.[0],latestGeometry,now);
+          maskReady=false;
+          const mask=result.segmentationMasks?.[0];
+          if(mask){
+            maskCanvas.width=mask.width;maskCanvas.height=mask.height;
+            const pixels=maskCtx.createImageData(mask.width,mask.height),values=mask.getAsFloat32Array();
+            for(let i=0;i<values.length;i++){pixels.data[i*4]=255;pixels.data[i*4+1]=255;pixels.data[i*4+2]=255;pixels.data[i*4+3]=255*clamp((values[i]-.2)/.6,0,1);}
+            maskCtx.putImageData(pixels,0,0);maskReady=true;
+          }
+        });
+      }catch(error){
+        console.warn('Tracking:',error);stopCamera();
+        startup.classList.remove('hidden');
+        setLoading('El seguimiento no pudo continuar. Actualiza el navegador y vuelve a activar la cámara.');
+      }
     }
     if(latestGeometry){
-      const faces=faceTracker.getFaces(now);
-      visibleSmile=faces.some(face=>face.smiling);
-      for(const face of faces){
-        if(face.smiling)drawFaceEffect(ctx,face.landmarks,latestGeometry,now,Math.max(face.smileAt??now,effectChangedAt),effectIndex);
+      const anchor=shoulderTracker.get(now),image=instructorImages[instructorIndex],item=INSTRUCTORS[instructorIndex];
+      const ready=anchor&&maskReady&&image.complete&&image.naturalWidth;
+      captureBtn.disabled=!ready;
+      setStatus(ready?'Abrazo listo · mira a la cámara':!image.naturalWidth?'Preparando instructor…':'Aléjate un poco: muestra ambos hombros');
+      if(ready){
+        drawCompanion(ctx,image,anchor,item.calibration,side);
+        // Restore the real user over the instructor, using the same crop/mirror as the video.
+        const ratio=canvas.width/W;
+        if(userCanvas.width!==canvas.width||userCanvas.height!==canvas.height){userCanvas.width=canvas.width;userCanvas.height=canvas.height;}
+        userCtx.setTransform(ratio,0,0,ratio,0,0);userCtx.clearRect(0,0,W,H);drawVideo(W,H,userCtx);
+        userCtx.globalCompositeOperation='destination-in';userCtx.save();
+        const g=latestGeometry;
+        if(g.mirror){userCtx.translate(W,0);userCtx.scale(-1,1);}
+        userCtx.drawImage(maskCanvas,g.offsetX,g.offsetY,g.drawWidth,g.drawHeight);
+        userCtx.restore();userCtx.globalCompositeOperation='source-over';
+        ctx.drawImage(userCanvas,0,0,W,H);
+        drawCompanion(ctx,image,anchor,item.calibration,side,true);
       }
     }
   }else{paintBackground(W,H);latestGeometry=null;}
   drawFrame(ctx,W,H);
-  const hintMessage=visibleSmile?'¡Somos Elegantísimos!':'Sonríe para activar el efecto';
+  const tracked=shoulderTracker.get(now);
+  const needsSpace=tracked&&(side===1?tracked.x>W*.43:tracked.x<W*.57);
+  const hintMessage=needsSpace?'Colócate a la '+(side===1?'izquierda':'derecha')+' para dejar espacio al instructor':tracked?'Mira a la cámara y toma tu foto':'Encuadra tu cabeza y ambos hombros';
   if(hint.textContent!==hintMessage)hint.textContent=hintMessage;
   raf=requestAnimationFrame(render);
 }
 function stopCamera(){
   if(stream){for(const track of stream.getTracks())track.stop();stream=null;}
-  video.pause();video.srcObject=null;showCamera=false;visibleSmile=false;faceTracker.reset();
+  video.pause();video.srcObject=null;showCamera=false;maskReady=false;shoulderTracker.reset();captureBtn.disabled=true;
 }
 async function startCamera(){
   if(!window.isSecureContext)throw new Error('La cámara requiere HTTPS o localhost. Usa GitHub Pages o Firebase Hosting.');
@@ -103,30 +134,26 @@ async function startCamera(){
     video.onloadedmetadata=()=>{clearTimeout(timer);resolve();};
   });
   await video.play();
-  lastVideoTime=-1;lastScan=0;faceTracker.reset();showCamera=true;
-  setStatus('Buscando rostro…');
+  lastVideoTime=-1;lastScan=0;shoulderTracker.reset();showCamera=true;
+  setStatus('Buscando hombros…');
 }
 async function loadModel(){
-  if(faceLandmarker)return;
+  if(poseLandmarker)return;
   let lastError=null;
   for(const base of MEDIA_CDNS){
     try{
-      setLoading('Preparando seguimiento facial…');
+      setLoading('Preparando seguimiento de hombros…');
       // Importar el bundle ESM real: /+esm fallaba en la versión antigua inexistente.
-      const {FaceLandmarker,FilesetResolver}=await import(`${base}/vision_bundle.mjs`);
+      const {PoseLandmarker,FilesetResolver}=await import(`${base}/vision_bundle.mjs`);
       const vision=await FilesetResolver.forVisionTasks(`${base}/wasm`);
       const opts={
         baseOptions:{modelAssetPath:MODEL,delegate:'GPU'},
-        runningMode:'VIDEO',numFaces:3,outputFaceBlendshapes:true,
-        minFaceDetectionConfidence:.5,minFacePresenceConfidence:.5,minTrackingConfidence:.5
+        runningMode:'VIDEO',numPoses:1,outputSegmentationMasks:true,
+        minPoseDetectionConfidence:.6,minPosePresenceConfidence:.6,minTrackingConfidence:.6
       };
-      try{
-        faceLandmarker=await FaceLandmarker.createFromOptions(vision,opts);
-      }catch(gpuError){
-        console.warn('GPU no disponible. Reintentando CPU:',gpuError);
-        opts.baseOptions.delegate='CPU';
-        faceLandmarker=await FaceLandmarker.createFromOptions(vision,opts);
-      }
+      // Float segmentation masks fail on the tested CPU path. Require GPU instead
+      // of offering a fallback that starts but cannot produce the embrace.
+      poseLandmarker=await PoseLandmarker.createFromOptions(vision,opts);
       return;
     }catch(error){
       lastError=error;
@@ -134,12 +161,13 @@ async function loadModel(){
     }
   }
   console.error('No se pudo cargar MediaPipe desde ninguno de los CDN.',lastError);
-  throw new Error('No se pudo cargar el seguimiento facial. Verifica tu conexión y vuelve a intentar.');
+  throw new Error('No se pudo cargar el seguimiento corporal. Usa Safari o Chrome actualizado con aceleración gráfica y verifica tu conexión.');
 }
 async function activate(){
   if(loading)return;loading=true;startBtn.disabled=true;
   setLoading('Pidiendo permiso para la cámara…');
   try{
+    await Promise.all(instructorImages.map(image=>image.decode()));
     await startCamera();await loadModel();
     startup.classList.add('hidden');$('fallback').classList.add('hidden');
     captureBtn.disabled=false;flipBtn.disabled=false;setLoading('');setStatus('Buscando rostro…');
@@ -168,7 +196,7 @@ function setPhoto(blob){
   openDialog('photo');
 }
 function capture(){
-  if(!showCamera)return;
+  if(!showCamera||captureBtn.disabled)return;
   // Snapshot del canvas SIN logos de interfaz; el logo oficial se estampa solo en la foto.
   const snapshot=document.createElement('canvas');
   snapshot.width=canvas.width;snapshot.height=canvas.height;
@@ -207,7 +235,7 @@ async function showGallery(){
   galleryObjectUrls.forEach(URL.revokeObjectURL);galleryObjectUrls=[];
   try{
     const rows=await listPhotos();
-    if(!rows.length){grid.innerHTML='<p class="empty-gallery">Todavía no tienes fotos. ¡Sonríe y toma la primera!</p>';}
+    if(!rows.length){grid.innerHTML='<p class="empty-gallery">Todavía no tienes fotos. ¡Elige instructor y toma la primera!</p>';}
     for(const row of rows){
       const thumb=document.createElement('button');thumb.className='gallery-item';thumb.type='button';
       const img=document.createElement('img');img.className='gallery-thumb';img.alt='Ver foto de Team Elegantísimos';
@@ -228,18 +256,12 @@ function setup(){
   if(window.visualViewport)window.visualViewport.addEventListener('resize',resize);
   startBtn.addEventListener('click',activate);
   const setEffectLabel=()=>{
-    const item=EFFECTS[effectIndex];
-    $('effectName').textContent=`${effectIndex+1} / ${EFFECTS.length} · ${item.name}`;
-    effectBtn.setAttribute('aria-label','Cambiar efecto, actual: '+item.name);
-    effectBtn.setAttribute('title','Siguiente efecto: '+EFFECTS[nextEffectIndex(effectIndex)].name);
+    $('effectName').textContent=INSTRUCTORS[instructorIndex].name+' · Abrazo';
+    document.querySelectorAll('[data-instructor]').forEach(button=>button.setAttribute('aria-pressed',String(Number(button.dataset.instructor)===instructorIndex)));
   };
   setEffectLabel();
-  effectBtn.addEventListener('click',()=>{
-    effectIndex=nextEffectIndex(effectIndex);
-    effectChangedAt=performance.now();
-    setEffectLabel();
-    showToast('Efecto '+(effectIndex+1)+' de '+EFFECTS.length+': '+EFFECTS[effectIndex].name);
-  });
+  document.querySelectorAll('[data-instructor]').forEach(button=>button.addEventListener('click',()=>{instructorIndex=Number(button.dataset.instructor);setEffectLabel();}));
+  effectBtn.addEventListener('click',()=>{side*=-1;showToast('Instructor a tu '+(side===1?'derecha':'izquierda'));});
   flipBtn.addEventListener('click',flipCamera);
   captureBtn.addEventListener('click',capture);
   $('galleryBtn').addEventListener('click',showGallery);

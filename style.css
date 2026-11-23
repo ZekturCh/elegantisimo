@@ -56,3 +56,4 @@
   .effect-indicator{bottom:calc(env(safe-area-inset-bottom) + 113px)}
   .hud-hint{bottom:calc(env(safe-area-inset-bottom) + 154px)}
 }
+.instructor-picker{position:absolute;z-index:4;top:calc(env(safe-area-inset-top) + 100px);left:50%;transform:translateX(-50%);display:flex;gap:8px}.instructor-picker button{border:1px solid #dcb8f280;background:#211028d9;color:white;padding:10px 13px;border-radius:30px;white-space:nowrap;font-size:12px;min-height:44px}.instructor-picker button[aria-pressed="true"]{background:#e0b9f2;color:#211028;border-color:#fff}.preview-brand{top:calc(env(safe-area-inset-top) + 160px);width:65px;min-width:55px}
