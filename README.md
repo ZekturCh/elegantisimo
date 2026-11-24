@@ -11,3 +11,4 @@ Motor: MediaPipe FaceLandmarker 0.10.35, hasta tres rostros con sonrisa independ
 Desarrollo: servir esta carpeta por HTTP en localhost o HTTPS. Pruebas: node --test tests/*.test.js.
 
 Antes de entregar en un evento: comprobar cámara, sonrisa, deslizado circular, ambos extremos del recorrido, giro de cámara, descarga y compartir en Safari/iPhone y Chrome/Android.
+Carga inicial: indicador animado por etapas (logos, permiso de cámara, descarga de filtros y detección de sonrisa). Muestra ayuda si una etapa tarda más de 12 segundos. No presenta porcentajes de descarga ficticios; en errores se detiene la animación y se habilita el reintento.

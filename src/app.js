@@ -3,11 +3,13 @@ import {listPhotos, savePhoto} from './gallery.js';
 import {createFaceTracker} from './faces.js';
 import {LOGOS,drawLogoEffect} from './logo-effects.js';
 import {mountCarousel} from './carousel.js?v=20261124-carousel-v6';
+import {createLoadingIndicator} from './loading.js?v=20261124-loading-v7';
 
 const $=id=>document.getElementById(id);
 const video=$('sourceVideo'), canvas=$('cameraCanvas'), ctx=canvas.getContext('2d',{alpha:false});
 const stage=$('stage'), startup=$('startup'), startBtn=$('startBtn'), status=$('trackingStatus'), hint=$('hint');
 const captureBtn=$('captureBtn'), flipBtn=$('flipBtn'), flash=$('flash'), logo=new Image();
+const loadingIndicator=createLoadingIndicator($('loadingProgress'),$('loadMessage'),startBtn);
 logo.src='./assets/team-logo.png';
 const ios=/iPhone|iPad|iPod/i.test(navigator.userAgent)||(navigator.platform==='MacIntel' && navigator.maxTouchPoints>1);
 let stream=null,facingMode='user',lastVideoTime=-1;
@@ -109,9 +111,12 @@ async function loadModel(){
   if(faceLandmarker)return;
   for(const base of MEDIA_CDNS){
     try{
-      setLoading('Preparando tus filtros…');
+      loadingIndicator.stage('Descargando los filtros…',3);
+      await loadingIndicator.paint();
       const {FaceLandmarker,FilesetResolver}=await import(base+'/vision_bundle.mjs');
       const vision=await FilesetResolver.forVisionTasks(base+'/wasm');
+      loadingIndicator.stage('Activando la detección de sonrisa…',4);
+      await loadingIndicator.paint();
       const opts={baseOptions:{modelAssetPath:'https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task',delegate:'GPU'},runningMode:'VIDEO',numFaces:3,outputFaceBlendshapes:true,minFaceDetectionConfidence:.5,minFacePresenceConfidence:.5,minTrackingConfidence:.5};
       try{faceLandmarker=await FaceLandmarker.createFromOptions(vision,opts);}
       catch{opts.baseOptions.delegate='CPU';faceLandmarker=await FaceLandmarker.createFromOptions(vision,opts);}
@@ -122,13 +127,17 @@ async function loadModel(){
 }
 async function activate(){
   if(loading)return;loading=true;startBtn.disabled=true;
-  setLoading('Pidiendo permiso para la cámara…');
+  loadingIndicator.stage('Preparando los logos…',1);
   try{
+    await loadingIndicator.paint();
     await Promise.all(logoImages.map(image=>image.decode()));
+    loadingIndicator.stage('Esperando el permiso de cámara…',2,'Si aparece el permiso de cámara, pulsa Permitir para continuar.');
+    await loadingIndicator.paint();
     await startCamera();await loadModel();
+    loadingIndicator.done();
     startup.classList.add('hidden');$('fallback').classList.add('hidden');
     captureBtn.disabled=true;flipBtn.disabled=false;setLoading('');setStatus('Buscando rostro…');
-  }catch(error){console.error(error);setLoading(error.message||'No se pudo iniciar. Verifica conexión y permisos.');showToast('No se pudo activar la experiencia');stopCamera();}
+  }catch(error){console.error(error);loadingIndicator.fail(error.message||'No se pudo iniciar. Verifica conexión y permisos.');showToast('No se pudo activar la experiencia');stopCamera();}
   finally{loading=false;startBtn.disabled=false;}
 }
 async function flipCamera(){

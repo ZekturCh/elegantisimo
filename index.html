@@ -10,7 +10,7 @@
   <meta name="description" content="Filtro AR Team Elegantísimos · Master Class Paolo. Coronas y lentes que se activan con tu sonrisa." />
   <title>Team Elegantísimos · Master Class Paolo AR</title>
   <link rel="icon" href="./assets/favicon.svg" type="image/svg+xml" />
-  <link rel="stylesheet" href="./style.css?v=20261124-carousel-v6" />
+  <link rel="stylesheet" href="./style.css?v=20261124-loading-v7" />
 </head>
 <body>
   <main class="app" id="app">
@@ -49,7 +49,7 @@
         <p>Tu sonrisa, tu estilo. Descubre nuestras <strong>coronas y lentes</strong>, desliza para elegir tu favorito y captura el momento.</p>
         <button id="startBtn" class="primary-btn">Activar cámara <span>↗</span></button>
         <p class="privacy-note">Tu imagen se procesa en el dispositivo. No subimos tus fotos a ningún servidor.</p>
-        <p class="progress-note" id="loadMessage" aria-live="polite"></p>
+        <div id="loadingProgress" class="loading-progress" hidden><p class="progress-note" id="loadMessage" role="status" aria-live="polite"></p><div class="loading-track" role="progressbar" aria-label="Preparando cámara y filtros"><span></span></div><p class="loading-detail"></p></div>
       </div>
     </section>
 
@@ -88,6 +88,6 @@
       </div>
     </section>
   </main>
-  <script type="module" src="./src/app.js?v=20261124-carousel-v6"></script>
+  <script type="module" src="./src/app.js?v=20261124-loading-v7"></script>
 </body>
 </html>
