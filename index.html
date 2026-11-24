@@ -7,10 +7,10 @@
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-  <meta name="description" content="Filtro AR Team Elegantísimos · Master Class Paolo. Elige instructor y toma tu foto con un abrazo virtual." />
+  <meta name="description" content="Filtro AR Team Elegantísimos · Master Class Paolo. Coronas y lentes que se activan con tu sonrisa." />
   <title>Team Elegantísimos · Master Class Paolo AR</title>
   <link rel="icon" href="./assets/favicon.svg" type="image/svg+xml" />
-  <link rel="stylesheet" href="./style.css?v=20261123-sin-mano-v5" />
+  <link rel="stylesheet" href="./style.css?v=20261124-carousel-v6" />
 </head>
 <body>
   <main class="app" id="app">
@@ -25,22 +25,18 @@
         <div class="overline">TEAM <b>•</b> ELEGANTÍSIMOS</div>
         <span id="trackingStatus" class="status-pill">Activa tu cámara</span>
       </div>
-      <div class="hud-hint" id="hint">Encuadra tu cabeza y ambos hombros</div>
-      <div class="effect-indicator" id="effectName" aria-live="polite">Instructor 1 · Abrazo</div>
-      <div class="mode-picker" role="group" aria-label="Tipo de efecto"><button type="button" data-mode="hug" aria-pressed="true">Abrazo</button><button type="button" data-mode="crown" aria-pressed="false">Coronas</button><button type="button" data-mode="glasses" aria-pressed="false">Lentes</button></div><label id="logoPicker" class="logo-picker" hidden>Logo <select id="logoSelect"><option value="0">Elegantísimos blanco</option><option value="1">Team Paolo blanco</option><option value="2">Team Paolo color</option><option value="3">Elegantísimos lila</option></select></label><div id="instructorPicker" class="instructor-picker" role="group" aria-label="Elegir instructor"><button type="button" data-instructor="0" aria-pressed="true">Instructor 1</button><button type="button" data-instructor="1" aria-pressed="false">Instructor 2</button></div><div class="hud-actions" id="actions">
-        <button class="action-circle" id="galleryBtn" title="Mis fotos" aria-label="Abrir mi galería">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect width="17" height="17" x="3" y="3" rx="3"/><circle cx="8.3" cy="8.2" r="1.7"/><path d="m4 16 4.5-4 3.6 3.1 2.3-2 5.4 5"/></svg><small>Fotos</small>
-        </button>
-        <button class="action-circle" id="effectBtn" title="Cambiar lado" aria-label="Cambiar lado del instructor">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-            <path d="M3 12a9 9 0 0 1 15.7-6M19 3v4h-4M21 12a9 9 0 0 1-15.7 6M5 21v-4h4"/>
-            <path d="m12 8 1.2 2.8L16 12l-2.8 1.2L12 16l-1.2-2.8L8 12l2.8-1.2z"/>
-          </svg><small>Lado</small>
-        </button>
-        <button class="shutter" id="captureBtn" title="Tomar foto" aria-label="Tomar fotografía" disabled><span></span></button>
-        <button class="action-circle" id="flipBtn" title="Cambiar cámara" aria-label="Cambiar cámara frontal y trasera" disabled>
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8.5 7 5h10l3 3.5v10H4z"/><circle cx="12" cy="13" r="3.1"/><path d="M9 3.1 6.5 5.4M9 3.1l-.1 3.4M15 21l2.5-2.5M15 21v-3.4"/></svg><small>Girar</small>
-        </button>
+      <div class="camera-controls">
+        <div class="hud-hint" id="hint">Desliza los filtros · sonríe para activarlos</div>
+        <div class="capture-row">
+          <div id="effectCarousel" class="effect-carousel" role="group" aria-roledescription="carrusel" aria-label="Filtros de coronas y lentes. Desliza o usa las flechas" tabindex="0"></div>
+          <button class="shutter" id="captureBtn" title="Tomar foto" aria-label="Tomar fotografía" disabled><span class="capture-art"></span></button>
+        </div>
+        <div class="effect-indicator" id="effectName" aria-live="polite">Corona · Elegantísimos blanco</div>
+        <div class="utility-row">
+          <button class="action-circle" id="galleryBtn" aria-label="Abrir mi galería"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="3" y="3" width="18" height="18" rx="4"/><circle cx="9" cy="9" r="2"/><path d="m4 18 5-5 4 3 3-3 5 5"/></svg><small>Mis fotos</small></button>
+          <span class="collection-label">ELEGANTÍSIMOS <b>✦</b> COLLECTION</span>
+          <button class="action-circle" id="flipBtn" aria-label="Cambiar cámara frontal y trasera" disabled><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M4 8h16v12H4zM8 8l2-4h4l2 4"/><path d="M9 14a3 3 0 0 1 5-2m1 3a3 3 0 0 1-5 2M14 10v3h-3"/></svg><small>Girar</small></button>
+        </div>
       </div>
       <div class="flash" id="flash" aria-hidden="true"></div>
     </div>
@@ -50,8 +46,8 @@
         <div class="eyebrow">EXPERIENCIA AR</div>
         <img src="./assets/team-logo.png" alt="Team Elegantísimos" class="logo-start" />
         <h1 id="startupTitle">¡Somos Elegantísimos!</h1>
-        <p>Elige <strong>Abrazo, Coronas o Lentes</strong>. Para el abrazo, muestra ambos hombros y elige instructor. Para coronas y lentes, elige tu logo y sonríe para activarlo.</p>
-        <div class="startup-modes" role="group" aria-label="Elegir efecto inicial"><button type="button" data-mode="hug" aria-pressed="true">Abrazo</button><button type="button" data-mode="crown" aria-pressed="false">Coronas</button><button type="button" data-mode="glasses" aria-pressed="false">Lentes</button></div><button id="startBtn" class="primary-btn">Activar cámara <span>↗</span></button>
+        <p>Tu sonrisa, tu estilo. Descubre nuestras <strong>coronas y lentes</strong>, desliza para elegir tu favorito y captura el momento.</p>
+        <button id="startBtn" class="primary-btn">Activar cámara <span>↗</span></button>
         <p class="privacy-note">Tu imagen se procesa en el dispositivo. No subimos tus fotos a ningún servidor.</p>
         <p class="progress-note" id="loadMessage" aria-live="polite"></p>
       </div>
@@ -92,6 +88,6 @@
       </div>
     </section>
   </main>
-  <script type="module" src="./src/app.js?v=20261123-sin-mano-v5"></script>
+  <script type="module" src="./src/app.js?v=20261124-carousel-v6"></script>
 </body>
 </html>

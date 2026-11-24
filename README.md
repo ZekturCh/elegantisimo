@@ -1,19 +1,13 @@
-# Abrazo con instructores · Team Elegantísimos
+# Team Elegantísimos · Coronas y lentes
 
-La experiencia tiene tres modos: Abrazo (Instructor 1 / Instructor 2), Coronas y Lentes. El botón Lado permite invertir la colocación del acompañante. El abrazo es para una persona por fotografía.
+Experiencia de cámara web con ocho filtros: los cuatro logos en versión corona y lentes. Todos se activan al sonreír. La detección y las fotos se procesan en el dispositivo; la galería usa almacenamiento local del navegador.
 
-El seguimiento usa MediaPipe Pose Landmarker Lite (0.10.35), ambos hombros y una máscara de segmentación. La escala, posición e inclinación se suavizan según el tiempo transcurrido. El acompañante se dibuja detrás del usuario y su mano se repone delante del hombro. Si no hay hombros fiables o máscara, se oculta y se bloquea la captura. La cámara frontal y la máscara comparten la misma transformación de espejo y recorte. Las fotos se procesan localmente.
+El selector inferior es un carrusel circular: deslizar, tocar una miniatura, usar flechas del teclado o desplazar horizontalmente con trackpad. No tiene extremos. El botón central muestra el filtro seleccionado y captura cuando hay una sonrisa activa. Hay acceso a galería y cambio de cámara a los lados de la barra inferior.
 
-Los dos PNG transparentes en assets/instructors son adaptaciones con IA de las referencias proporcionadas para el proyecto. La pose y el brazo se sintetizaron; revisar el parecido y la anatomía antes de aprobarlos. La calibración de hombros/mano está en src/companion.js. No se publican los retratos originales ni el chat en el repositorio.
+La opción de instructores ya no se ofrece y no se cargan sus imágenes ni el modelo de seguimiento corporal. Los módulos y recursos de versiones anteriores se conservan en el repositorio, sin uso desde la interfaz actual.
 
-Desarrollo: servir esta carpeta por HTTP en localhost o HTTPS. Abrir index.html. Pruebas: node --test tests/companion.test.js tests/faces.test.js tests/renderer.test.js tests/logo-effects.test.js.
+Motor: MediaPipe FaceLandmarker 0.10.35, hasta tres rostros con sonrisa independiente. Hay fallback de GPU a CPU y dos CDN. Captura y exportación mantienen el sello de la marca.
 
-Antes de publicar: probar en Safari/iPhone y Chrome/Android, seleccionar ambos instructores, cambiar de lado, acercarse/alejarse, inclinar los hombros, salir y volver a entrar, girar la cámara y guardar/compartir la foto. La máscara puede fallar con manos cruzadas, pelo fino, poca luz o varias personas; usar encuadre individual frontal. Es un montaje 2D anclado al cuerpo, no un avatar volumétrico ni una simulación física del abrazo.
+Desarrollo: servir esta carpeta por HTTP en localhost o HTTPS. Pruebas: node --test tests/*.test.js.
 
-Coronas y Lentes permiten elegir los cuatro logos originales del chat. Se proyectan usando ambos ojos y la frente y se activan por sonrisa independiente para hasta tres rostros. La sonrisa tiene umbrales de entrada/salida distintos y retardo mínimo para evitar parpadeos. Los lentes llevan un logo en cada cristal; las coronas llevan el logo centrado. La composición screen omite el fondo negro de los logos sin redibujar la marca. Solo se ejecuta el seguimiento correspondiente al modo seleccionado; el otro modelo queda en memoria para cambiar rápidamente. Los helpers de ilustraciones faciales antiguas se conservan como utilidades heredadas.
-
-API de referencia: https://developers.google.com/edge/mediapipe/solutions/vision/pose_landmarker?tab=Web
-Compatibilidad: requiere aceleración gráfica (GPU/WebGL). La ruta CPU falló al leer las máscaras de segmentación en las versiones verificadas; se evita ese fallback. Verificado con foto estática en Chrome/GPU, pendiente cámara en teléfonos.
-Corrección de oclusión: la máscara se compone directamente con DrawingUtils en el mismo contexto WebGL del modelo. Se evita getAsFloat32Array, que devolvía ceros en el equipo probado. Una máscara vacía o completamente opaca ya no habilita el abrazo ni la captura. Se verifican la silueta y la superposición del usuario sobre el brazo, además de las transformaciones de espejo y recorte. Pruebas: node --test tests/*.test.js (16 tests).
-Ajuste de muñeca: la capa frontal conserva la mano y el puño completos. La conexión del brazo usa una máscara alfa gradual en vez de un recorte rectangular duro. La geometría es compartida con el cuerpo y se mantiene al cambiar de lado.
-Versión sin mano frontal: se elimina la capa de mano superpuesta. El instructor completo permanece detrás de la silueta del usuario; la pose de la imagen sugiere el abrazo.
+Antes de entregar en un evento: comprobar cámara, sonrisa, deslizado circular, ambos extremos del recorrido, giro de cámara, descarga y compartir en Safari/iPhone y Chrome/Android.

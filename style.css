@@ -59,3 +59,28 @@
 .instructor-picker{position:absolute;z-index:4;top:calc(env(safe-area-inset-top) + 100px);left:50%;transform:translateX(-50%);display:flex;gap:8px}.instructor-picker button{border:1px solid #dcb8f280;background:#211028d9;color:white;padding:10px 13px;border-radius:30px;white-space:nowrap;font-size:12px;min-height:44px}.instructor-picker button[aria-pressed="true"]{background:#e0b9f2;color:#211028;border-color:#fff}.preview-brand{top:calc(env(safe-area-inset-top) + 160px);width:65px;min-width:55px}
 [hidden]{display:none!important}.mode-picker{position:absolute;z-index:4;top:calc(env(safe-area-inset-top) + 88px);left:50%;transform:translateX(-50%);display:flex;gap:6px}.mode-picker button,.logo-picker select{min-height:42px;padding:8px 13px;border:1px solid #dcb8f280;background:#211028e8;color:white;border-radius:22px;font:inherit;font-size:12px}.mode-picker button[aria-pressed="true"]{background:#e0b9f2;color:#211028}.instructor-picker{top:calc(env(safe-area-inset-top) + 139px)}.logo-picker{position:absolute;z-index:4;top:calc(env(safe-area-inset-top) + 139px);left:50%;transform:translateX(-50%);white-space:nowrap;font-size:12px}.logo-picker select{max-width:220px;margin-left:6px}.preview-brand{top:calc(env(safe-area-inset-top) + 196px)}
 .startup-modes{display:flex;justify-content:center;gap:8px;margin:0 0 16px}.startup-modes button{min-height:44px;border-radius:22px;padding:9px 13px;border:1px solid #dcb8f280;color:white;background:#211028}.startup-modes button[aria-pressed="true"]{background:#e0b9f2;color:#211028}
+/* Camera collection · circular filter rail */
+.camera-controls{position:absolute;z-index:4;inset:auto 0 0;padding:20px 0 calc(env(safe-area-inset-bottom) + 15px);background:linear-gradient(transparent,#10071670 12%,#08040dcc 70%,#08040ff5);--effect-step:clamp(70px,18vw,78px)}
+.camera-controls .hud-hint{position:static;max-width:none;margin:0 15px 18px;font-size:11px;font-weight:500;letter-spacing:.025em;color:#e9deef}
+.capture-row{position:relative;height:100px;display:flex;align-items:center;justify-content:center}
+.effect-carousel{position:absolute;inset:0;overflow:hidden;touch-action:pan-y;outline:none;mask-image:linear-gradient(90deg,transparent,#000 9%,#000 91%,transparent)}
+.carousel-option{position:absolute;left:50%;top:50%;width:76px;height:76px;padding:4px;border:1px solid #e5c8f555;background:linear-gradient(145deg,#ecd8fc44,#6c438d33);border-radius:50%;transform:translate(-50%,-50%) translateX(calc(var(--offset)*var(--effect-step) + var(--drag,0px))) scale(var(--size));transition:transform .34s cubic-bezier(.22,.8,.3,1),opacity .24s;box-shadow:0 8px 24px #0006;cursor:pointer;-webkit-tap-highlight-color:transparent}
+.filter-art{position:relative;display:block;width:100%;height:100%;overflow:hidden;background:radial-gradient(circle at 30% 20%,#493154,#110a18 78%);border-radius:50%;box-shadow:inset 0 0 0 1px #ffffff14}
+.filter-art img{position:absolute;inset:24% 12% 8%;width:76%;height:65%;object-fit:contain;mix-blend-mode:screen;pointer-events:none}
+.filter-art svg{position:absolute;top:7%;left:34%;width:32%;height:32%;color:#efd2ff;filter:drop-shadow(0 0 4px #c78cf6);pointer-events:none}
+.camera-controls .shutter{position:relative;z-index:3;width:88px;height:88px;border:3px solid #fff9;background:#180e20;border-radius:50%;padding:5px;box-shadow:0 0 0 1px #ffffff30,0 0 0 5px #c791ef18,0 8px 30px #0009;transition:transform .16s,border-color .2s}
+.camera-controls .shutter:disabled{opacity:1;border-color:#f8ebff99;cursor:default}
+.camera-controls .shutter:not(:disabled){border-color:#fff;box-shadow:0 0 0 1px #ffffff55,0 0 24px #c28bed70}
+.camera-controls .shutter .capture-art{position:static;display:block;width:100%;height:100%;inset:auto;background:none;border-radius:50%;box-shadow:none}
+.camera-controls .shutter:active{transform:scale(.94)}
+.camera-controls .effect-indicator{position:static;transform:none;max-width:calc(100% - 24px);padding:0;margin:9px auto 4px;background:none;border:0;box-shadow:none;font-size:12px;font-weight:650;letter-spacing:.025em;min-height:20px;color:#fff}
+.utility-row{display:flex;align-items:center;justify-content:space-between;padding:0 24px;margin-top:8px}
+.utility-row .action-circle{height:48px;width:48px;gap:3px;opacity:.9}.utility-row .action-circle svg{width:22px;height:22px}.utility-row .action-circle small{font-size:9px;font-weight:500}
+.collection-label{font-size:8px;letter-spacing:.19em;color:#c9b6d9;font-weight:600;white-space:nowrap}.collection-label b{margin:0 5px;color:#e6c9f5}
+.preview-brand{top:calc(env(safe-area-inset-top) + 100px);right:18px;width:66px;opacity:.6}
+.safari-help{font-size:9px;right:10px;bottom:calc(env(safe-area-inset-bottom) + 3px);padding:3px 7px;opacity:.65}
+.carousel-option:focus-visible,.effect-carousel:focus-visible,.shutter:focus-visible{outline:2px solid #f1cfff;outline-offset:4px}
+@media(prefers-reduced-motion:reduce){.carousel-option{transition:none}}
+@media(max-height:610px){.camera-controls{padding-top:10px;padding-bottom:calc(env(safe-area-inset-bottom) + 10px)}.camera-controls .hud-hint{margin-bottom:7px}.capture-row{height:86px}.camera-controls .shutter{width:78px;height:78px}.utility-row{margin-top:0}.utility-row .action-circle{height:40px}.camera-controls .effect-indicator{margin-top:3px}}
+.camera-controls .shutter .filter-art{position:relative;inset:auto;width:100%;height:100%;background:radial-gradient(circle at 30% 20%,#493154,#110a18 78%);transform:none;box-shadow:inset 0 0 0 1px #ffffff14}.camera-controls .shutter:active span{transform:none}.camera-controls .hud-hint{font-size:12px;font-weight:500}
+.effect-carousel{user-select:none;-webkit-user-select:none}.effect-carousel[data-dragging] .carousel-option{transition:none}
