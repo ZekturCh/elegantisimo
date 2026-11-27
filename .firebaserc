@@ -1,0 +1,14 @@
+{
+  "projects": {
+    "default": "dbdosparax"
+  },
+  "targets": {
+    "dbdosparax": {
+      "hosting": {
+        "paolo": [
+          "team-paolo"
+        ]
+      }
+    }
+  }
+}

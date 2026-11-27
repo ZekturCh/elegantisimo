@@ -12,3 +12,19 @@ Desarrollo: servir esta carpeta por HTTP en localhost o HTTPS. Pruebas: node --t
 
 Antes de entregar en un evento: comprobar cámara, sonrisa, deslizado circular, ambos extremos del recorrido, giro de cámara, descarga y compartir en Safari/iPhone y Chrome/Android.
 Carga inicial: indicador animado por etapas (logos, permiso de cámara, descarga de filtros y detección de sonrisa). Muestra ayuda si una etapa tarda más de 12 segundos. No presenta porcentajes de descarga ficticios; en errores se detiene la animación y se habilita el reintento.
+
+## Publicación en Firebase Hosting
+
+Aplicación publicada: https://team-paolo.web.app · Proyecto: `DBdosparaX` (`dbdosparax`) · Sitio: `team-paolo`.
+
+La aplicación es estática y no requiere compilación. `firebase.json` publica los archivos de la aplicación desde esta carpeta y excluye pruebas, documentación y archivos de configuración. `.firebaserc` selecciona el proyecto y el sitio del destino `paolo`.
+
+Para actualizar únicamente este sitio, desde una copia actualizada del repositorio:
+
+```sh
+npx firebase-tools login
+npm test
+npx firebase-tools deploy --only hosting:paolo --project dbdosparax
+```
+
+El despliegue se ejecuta manualmente; subir un commit a GitHub no actualiza Firebase automáticamente. Las fotos continúan guardándose en el dispositivo. Las fotos de la galería local del dominio anterior no se transfieren al nuevo dominio.

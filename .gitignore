@@ -1,1 +1,3 @@
 .qa*
+.firebase/
+firebase-debug*.log

@@ -1,0 +1,28 @@
+{
+  "hosting": {
+    "target": "paolo",
+    "public": ".",
+    "ignore": [
+      "firebase.json",
+      "**/.*",
+      "**/.*/**",
+      "**/node_modules/**",
+      "tests/**",
+      "package*.json",
+      "README.md",
+      "test.txt",
+      "firebase-debug*.log"
+    ],
+    "headers": [
+      {
+        "source": "**",
+        "headers": [
+          {
+            "key": "Cache-Control",
+            "value": "public, max-age=0, must-revalidate"
+          }
+        ]
+      }
+    ]
+  }
+}
